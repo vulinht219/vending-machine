@@ -1,0 +1,22 @@
+# VS Code
+.vscode/
+
+# PlatformIO
+.pio/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated dataset
+dataset/output/*
+
+# Build output
+build/
+dist/
