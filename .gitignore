@@ -20,3 +20,6 @@ dataset/output/*
 # Build output
 build/
 dist/
+
+# CMake
+simulator/build/
