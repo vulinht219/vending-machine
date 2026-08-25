@@ -1,25 +1,30 @@
-{"id":1,"type":"numeric","question":"What is 12 + 7?","answer":"19","difficulty":1}
-{"id":2,"type":"numeric","question":"What is 8 x 4?","answer":"32","difficulty":1}
-{"id":3,"type":"text","question":"What has keys but no locks?","answer":"keyboard","difficulty":2}
-{"id":4,"type":"mcq","question":"Which planet is closest to the Sun?","options":["Venus","Mercury","Earth","Mars"],"answer":1,"difficulty":1}
-{"id":5,"type":"numeric","question":"What is 15 - 9?","answer":"6","difficulty":1}
-{"id":6,"type":"text","question":"What has a heart that doesn't beat?","answer":"artichoke","difficulty":2}
-{"id":7,"type":"mcq","question":"Which gas do plants absorb from the atmosphere?","options":["Oxygen","Carbon Dioxide","Nitrogen","Hydrogen"],"answer":1,"difficulty":1}
-{"id":8,"type":"numeric","question":"What is 9 x 6?","answer":"54","difficulty":1}
-{"id":9,"type":"text","question":"What comes once in a minute, twice in a moment, but never in a thousand years?","answer":"the letter 'm'","difficulty":3}
-{"id":10,"type":"mcq","question":"Which element has the chemical symbol 'O'?","options":["Gold","Oxygen","Silver","Iron"],"answer":1,"difficulty":1}
-{"id":11,"type":"numeric","question":"What is 20 ÷ 4?","answer":"5","difficulty":1}
-{"id":12,"type":"text","question":"What has a neck but no head?","answer":"bottle","difficulty":2}
-{"id":13,"type":"mcq","question":"Which ocean is the largest?","options":["Atlantic Ocean","Indian Ocean","Arctic Ocean","Pacific Ocean"],"answer":3,"difficulty":1}
-{"id":14,"type":"numeric","question":"What is 7 + 5?","answer":"12","difficulty":1}
-{"id":15,"type":"text","question":"What has hands but cannot clap?","answer":"clock","difficulty":2}
-{"id":16,"type":"mcq","question":"Which country is known as the Land of the Rising Sun?","options":["China","Japan","Thailand","India"],"answer":1,"difficulty":1}
-{"id":17,"type":"numeric","question":"What is 14 - 8?","answer":"6","difficulty":1}
-{"id":18,"type":"text","question":"What has a face and two hands but no arms or legs?","answer":"clock","difficulty":2}
-{"id":19,"type":"mcq","question":"Which planet is known as the Red Planet?","options":["Venus","Mars","Jupiter","Saturn"],"answer":1,"difficulty":1}
-{"id":20,"type":"numeric","question":"What is 5 x 5?","answer":"25","difficulty":1}
-{"id":21,"type":"text","question":"What has a head and a tail but no body?","answer":"coin","difficulty":2}
-{"id":22,"type":"mcq","question":"Which is the largest mammal in the world?","options":["Elephant","Blue Whale","Giraffe","Hippopotamus"],"answer":1,"difficulty":1}
-{"id":23,"type":"numeric","question":"What is 18 ÷ 3?","answer":"6","difficulty":1}
-{"id":24,"type":"text","question":"What has a ring but no finger?","answer":"telephone","difficulty":2}
-{"id":25,"type":"mcq","question":"Which country is famous for the Eiffel Tower?","options":["Italy","France","Germany","Spain"],"answer":1,"difficulty":1}
+{"id":1,"category":"math","type":"numeric","difficulty":1,"question":"A 50 euro item is discounted by 20%. What is the new price in euros?","options":[],"answer":"40"}
+{"id":2,"category":"math","type":"multiple_choice","difficulty":1,"question":"A recipe for 2 people needs 300 g of rice. How much rice is needed for 4 people?","options":["450 g","500 g","600 g","900 g"],"answer":"2"}
+{"id":3,"category":"math","type":"numeric","difficulty":2,"question":"A car travels 180 km in 3 hours at a constant speed. What is its average speed in km/h?","options":[],"answer":"60"}
+{"id":4,"category":"math","type":"multiple_choice","difficulty":2,"question":"You have 80 euros and spend 35% of it. How much money remains?","options":["28 euros","45 euros","52 euros","65 euros"],"answer":"2"}
+{"id":5,"category":"math","type":"numeric","difficulty":2,"question":"A rectangular room is 6 m long and 4 m wide. What is its area in square meters?","options":[],"answer":"24"}
+{"id":6,"category":"physics","type":"multiple_choice","difficulty":1,"question":"Why do car tires have grooves?","options":["To make the car lighter","To improve grip on wet roads","To cool the engine","To increase tire pressure"],"answer":"1"}
+{"id":7,"category":"physics","type":"multiple_choice","difficulty":2,"question":"Why does a metal spoon in hot soup become hot after a while?","options":["Metal creates heat","Heat is conducted through the metal","The spoon absorbs light","Air pressure heats the spoon"],"answer":"1"}
+{"id":8,"category":"physics","type":"multiple_choice","difficulty":1,"question":"Why is it harder to stop a fast-moving bicycle than a slow-moving bicycle?","options":["It has more momentum","Its tires become larger","Gravity becomes weaker","Its mass disappears"],"answer":"0"}
+{"id":9,"category":"physics","type":"multiple_choice","difficulty":2,"question":"Why can you sometimes see your reflection in a calm lake?","options":["Water produces light","Light reflects from the water surface","Water magnifies objects","The lake stores sunlight"],"answer":"1"}
+{"id":10,"category":"physics","type":"multiple_choice","difficulty":2,"question":"Which change usually makes an object harder to accelerate if the applied force stays the same?","options":["Increasing its mass","Changing its color","Lowering its temperature slightly","Making its surface shinier"],"answer":"0"}
+{"id":11,"category":"animals","type":"multiple_choice","difficulty":1,"question":"Why do dogs pant more when they are hot?","options":["To cool their body","To improve hearing","To sharpen their claws","To increase blood pressure"],"answer":"0"}
+{"id":12,"category":"animals","type":"multiple_choice","difficulty":1,"question":"Why do cats often lick their fur?","options":["To make their claws longer","To clean and groom themselves","To improve their eyesight","To make themselves heavier"],"answer":"1"}
+{"id":13,"category":"animals","type":"multiple_choice","difficulty":2,"question":"Why can many cats see better than humans in dim light?","options":["Their eyes can use low levels of light efficiently","Their eyes produce their own light","They see only in black and white","Their pupils never change size"],"answer":"0"}
+{"id":14,"category":"animals","type":"multiple_choice","difficulty":2,"question":"What is a common reason birds migrate over long distances?","options":["To change their feather color","To find food and suitable breeding conditions","To avoid flying","To increase their body weight permanently"],"answer":"1"}
+{"id":15,"category":"animals","type":"multiple_choice","difficulty":2,"question":"Why do some desert animals become more active at night?","options":["Night always provides more food","It helps them avoid extreme daytime heat","They cannot see during daytime","Their bodies need moonlight"],"answer":"1"}
+{"id":16,"category":"science","type":"multiple_choice","difficulty":1,"question":"Why can a bathroom mirror fog up after a hot shower?","options":["The mirror produces steam","Water vapor condenses on the cooler mirror","The glass absorbs oxygen","Hot water changes the glass structure"],"answer":"1"}
+{"id":17,"category":"science","type":"multiple_choice","difficulty":1,"question":"Why do we usually see lightning before hearing thunder?","options":["Lightning happens earlier","Light travels much faster than sound","Thunder only starts after lightning disappears","Clouds block sound temporarily"],"answer":"1"}
+{"id":18,"category":"science","type":"multiple_choice","difficulty":2,"question":"Why are coastal areas often cooler during a hot summer day than areas farther inland?","options":["The sea heats up more slowly than land","Ocean water blocks sunlight","Coastal areas are always at higher altitude","The sea produces cold air continuously"],"answer":"0"}
+{"id":19,"category":"science","type":"multiple_choice","difficulty":2,"question":"What mainly causes ocean tides on Earth?","options":["Earth's magnetic field","The Moon's gravitational pull","Cloud movement","Underwater volcanoes"],"answer":"1"}
+{"id":20,"category":"science","type":"multiple_choice","difficulty":2,"question":"Why do astronauts appear weightless while orbiting Earth?","options":["There is no gravity in space","They and their spacecraft are continuously falling around Earth","Their bodies lose mass","Space removes Earth's gravitational field"],"answer":"1"}
+{"id":21,"category":"world_history","type":"multiple_choice","difficulty":1,"question":"What was one major effect of Gutenberg's printing press in Europe?","options":["Faster sea travel","Wider spread of books and knowledge","Stronger medieval castles","Lower food prices everywhere"],"answer":"1"}
+{"id":22,"category":"world_history","type":"multiple_choice","difficulty":1,"question":"The ancient pyramids at Giza were built by which civilization?","options":["Roman","Egyptian","Maya","Viking"],"answer":"1"}
+{"id":23,"category":"world_history","type":"multiple_choice","difficulty":2,"question":"Why was the Silk Road historically important?","options":["It connected regions for trade and cultural exchange","It was the first railway","It separated Europe from Asia","It was used only by armies"],"answer":"0"}
+{"id":24,"category":"world_history","type":"multiple_choice","difficulty":2,"question":"Which major change was associated with the Industrial Revolution?","options":["A return to hunting and gathering","Large-scale machine production in factories","The end of international trade","The disappearance of cities"],"answer":"1"}
+{"id":25,"category":"world_history","type":"multiple_choice","difficulty":2,"question":"The fall of the Berlin Wall in 1989 became a symbol of what major change?","options":["The beginning of the Roman Empire","The easing of Cold War divisions in Europe","The start of the Industrial Revolution","The discovery of America"],"answer":"1"}
+{"id":26,"category":"dad_jokes","type":"multiple_choice","difficulty":1,"question":"Why did the computer go to the doctor?","options":["It had a virus","It lost its chair","It was too quiet","It needed a bigger desk"],"answer":"0"}
+{"id":27,"category":"dad_jokes","type":"multiple_choice","difficulty":1,"question":"Why don't skeletons fight each other?","options":["They have no weapons","They don't have the guts","They are too fast","They only fight at night"],"answer":"1"}
+{"id":28,"category":"dad_jokes","type":"multiple_choice","difficulty":1,"question":"What do you call cheese that isn't yours?","options":["Cheddar","Nacho cheese","Lost cheese","Mystery cheese"],"answer":"1"}
+{"id":29,"category":"dad_jokes","type":"multiple_choice","difficulty":1,"question":"Why did the bicycle fall over?","options":["It was two-tired","It forgot the brakes","The road was hungry","It lost its helmet"],"answer":"0"}
+{"id":30,"category":"dad_jokes","type":"multiple_choice","difficulty":1,"question":"What do you call a bear with no teeth?","options":["A sleepy bear","A gummy bear","A tiny bear","A bare bear"],"answer":"1"}

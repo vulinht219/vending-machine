@@ -1,38 +1,269 @@
 #include "QuizManager.h"
 
-QuizManager::QuizManager() {
-    currentIndex = 0;
+#include "QuizLoader.h"
+#include "QuizValidator.h"
 
-    quizzes.push_back({
-        1,
-        "What is 12 + 7?",
-        "19",
-        1
-    });
+#include <algorithm>
+#include <numeric>
+#include <random>
+#include <stdexcept>
 
-    quizzes.push_back({
-        2,
-        "What is 8 * 4?",
-        "32",
-        1
-    });
 
-    quizzes.push_back({
-        3,
-        "What is 100 / 5?",
-        "20",
-        1
-    });
+// =====================================================
+// CONSTRUCTOR
+// =====================================================
+
+QuizManager::QuizManager()
+    : progressStore(
+        "../dataset/progress/quiz_progress.json"
+    )
+{
+    // =============================================
+    // LOAD DATASET
+    // =============================================
+
+    quizzes =
+        QuizLoader::loadFromJsonLines(
+            "../dataset/sample/quizzes.jsonl"
+        );
+
+
+    // =============================================
+    // VALIDATE DATASET
+    // =============================================
+
+    QuizValidator::validateDataset(
+        quizzes
+    );
+
+
+    // =============================================
+    // LOAD OR CREATE PROGRESS
+    // =============================================
+
+    initializeProgress();
+
+
+    // =============================================
+    // RECREATE SHUFFLE
+    // =============================================
+
+    buildShuffleOrder();
 }
 
-Quiz QuizManager::getCurrentQuiz() {
-    return quizzes[currentIndex];
+
+// =====================================================
+// GENERATE RANDOM SEED
+// =====================================================
+
+std::uint32_t QuizManager::generateSeed()
+{
+    std::random_device rd;
+
+    return rd();
 }
 
-void QuizManager::moveToNextQuiz() {
-    currentIndex++;
 
-    if (currentIndex >= quizzes.size()) {
-        currentIndex = 0;
+// =====================================================
+// INITIALIZE PROGRESS
+// =====================================================
+
+void QuizManager::initializeProgress()
+{
+    if (
+        progressStore.exists()
+    ) {
+        progress =
+            progressStore.load();
+
+
+        // =============================================
+        // DATASET VERSION CHANGED
+        // =============================================
+
+        if (
+            progress.datasetVersion
+            != CURRENT_DATASET_VERSION
+        ) {
+            progress.seed =
+                generateSeed();
+
+            progress.currentPosition =
+                0;
+
+            progress.round =
+                1;
+
+            progress.datasetVersion =
+                CURRENT_DATASET_VERSION;
+
+            progressStore.save(
+                progress
+            );
+
+            return;
+        }
+
+
+        // =============================================
+        // INVALID POSITION
+        // =============================================
+
+        if (
+            progress.currentPosition
+            >= quizzes.size()
+        ) {
+            progress.seed =
+                generateSeed();
+
+            progress.currentPosition =
+                0;
+
+            progress.round =
+                1;
+
+            progress.datasetVersion =
+                CURRENT_DATASET_VERSION;
+
+            progressStore.save(
+                progress
+            );
+
+            return;
+        }
     }
+
+    else {
+
+        progress.seed =
+            generateSeed();
+
+        progress.currentPosition =
+            0;
+
+        progress.round =
+            1;
+
+        progress.datasetVersion =
+            CURRENT_DATASET_VERSION;
+
+
+        progressStore.save(
+            progress
+        );
+    }
+}
+
+
+// =====================================================
+// BUILD SAME RANDOM ORDER FROM SEED
+// =====================================================
+
+void QuizManager::buildShuffleOrder()
+{
+    shuffledOrder.resize(
+        quizzes.size()
+    );
+
+
+    std::iota(
+        shuffledOrder.begin(),
+        shuffledOrder.end(),
+        0
+    );
+
+
+    std::mt19937 generator(
+        progress.seed
+    );
+
+
+    std::shuffle(
+        shuffledOrder.begin(),
+        shuffledOrder.end(),
+        generator
+    );
+}
+
+
+// =====================================================
+// GET CURRENT QUIZ
+// =====================================================
+
+Quiz QuizManager::getCurrentQuiz() const
+{
+    if (quizzes.empty()) {
+
+        throw std::runtime_error(
+            "Quiz dataset is empty."
+        );
+    }
+
+
+    std::size_t quizIndex =
+        shuffledOrder[
+            progress.currentPosition
+        ];
+
+
+    return quizzes[
+        quizIndex
+    ];
+}
+
+
+// =====================================================
+// MOVE TO NEXT QUIZ
+// =====================================================
+
+void QuizManager::moveToNextQuiz()
+{
+    progress.currentPosition++;
+
+
+    // =============================================
+    // END OF ROUND
+    // =============================================
+
+    if (
+        progress.currentPosition
+        >= quizzes.size()
+    ) {
+        startNewRound();
+        return;
+    }
+
+
+    // =============================================
+    // SAVE PROGRESS
+    // =============================================
+
+    progressStore.save(
+        progress
+    );
+}
+
+
+// =====================================================
+// START NEW ROUND
+// =====================================================
+
+void QuizManager::startNewRound()
+{
+    progress.round++;
+
+    progress.seed =
+        generateSeed();
+
+    progress.currentPosition =
+        0;
+
+
+    // New seed = new shuffled order.
+    buildShuffleOrder();
+
+
+    progressStore.save(
+        progress
+    );
 }
