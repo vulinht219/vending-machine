@@ -56,7 +56,7 @@ int main()
     AppConfig config;
 
     config.quizDatasetPath =
-        "../dataset/sample/quizzes.jsonl";
+       "../dataset/production/quizzes_1000.jsonl";
 
     config.quizProgressPath =
         "../dataset/progress/quiz_progress.json";
