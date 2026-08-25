@@ -6,19 +6,24 @@
 // =====================================================
 
 GameManager::GameManager(
-    IDispenser& dispenser
+    IDispenser& dispenser,
+    IQuizSource& quizSource,
+    IQuizProgressStore& quizProgressStore,
+    IGameProgressStore& gameProgressStore
 )
     : state(GameState::HOME),
+      quizManager(
+          quizSource,
+          quizProgressStore
+      ),
       dispenser(dispenser),
-      progressStore(
-          "../dataset/progress/game_progress.json"
-      )
+      progressStore(gameProgressStore)
 {
-    if (progressStore.exists()) {
-
+    if (
+        progressStore.exists()
+    ) {
         progress =
             progressStore.load();
-
     }
     else {
 
@@ -49,8 +54,8 @@ void GameManager::startGame()
 
 void GameManager::cancelGame()
 {
-    // User explicitly gives up the current question.
-    // Consume it immediately.
+    // User gives up this question.
+    // Consume it and go to the next one.
 
     quizManager.moveToNextQuiz();
 
@@ -65,7 +70,7 @@ void GameManager::cancelGame()
 
 void GameManager::retryQuiz()
 {
-    // Wrong answer does NOT consume question.
+    // Wrong answer does NOT consume the quiz.
 
     state =
         GameState::QUIZ;
@@ -91,32 +96,27 @@ bool GameManager::submitAnswer(
         );
 
 
-    // =================================================
-    // CORRECT
-    // =================================================
-
     if (correct) {
 
-    // Quiz completed.
-    quizManager.moveToNextQuiz();
+        // Question is completed immediately.
+        quizManager.moveToNextQuiz();
 
-    // User has earned one candy.
-    progress.pendingReward =
-        true;
 
-    progressStore.save(
-        progress
-    );
+        // The player has earned one candy.
+        progress.pendingReward =
+            true;
 
-    state =
-        GameState::CORRECT;
+        progressStore.save(
+            progress
+        );
 
-    return true;
+
+        state =
+            GameState::CORRECT;
+
+        return true;
     }
 
-    // =================================================
-    // WRONG
-    // =================================================
 
     state =
         GameState::WRONG;
@@ -133,8 +133,6 @@ bool GameManager::selectCandy(
     int slot
 )
 {
-    // Validate candy slot.
-
     if (
         slot < 1 ||
         slot > 6
@@ -150,10 +148,6 @@ bool GameManager::selectCandy(
         GameState::DISPENSING;
 
 
-    // =================================================
-    // DISPENSE
-    // =================================================
-
     bool success =
         dispenser.dispense(
             slot
@@ -162,24 +156,41 @@ bool GameManager::selectCandy(
 
     if (success) {
 
-    progress.pendingReward =
-        false;
+        // The earned reward has now been used.
+        progress.pendingReward =
+            false;
 
-    progressStore.save(
-        progress
-    );
+        progressStore.save(
+            progress
+        );
 
-    state =
-        GameState::SUCCESS;
 
-    return true;
+        state =
+            GameState::SUCCESS;
+
+        return true;
     }
 
+
+    // Dispensing failed.
+    //
+    // pendingReward remains TRUE because
+    // the user has not received their candy.
 
     state =
         GameState::ERROR;
 
     return false;
+}
+
+
+// =====================================================
+// PENDING REWARD
+// =====================================================
+
+bool GameManager::hasPendingReward() const
+{
+    return progress.pendingReward;
 }
 
 
@@ -194,15 +205,10 @@ GameState GameManager::getState() const
 
 
 // =====================================================
-// GET CURRENT QUIZ
+// CURRENT QUIZ
 // =====================================================
 
 Quiz GameManager::getCurrentQuiz() const
 {
     return quizManager.getCurrentQuiz();
-}
-
-bool GameManager::hasPendingReward() const
-{
-    return progress.pendingReward;
 }

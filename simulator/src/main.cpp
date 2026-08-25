@@ -4,7 +4,14 @@
 #include <chrono>
 #include <thread>
 
+#include "config/AppConfig.h"
+
 #include "game/GameManager.h"
+#include "game/FileGameProgressStore.h"
+
+#include "quiz/FileQuizSource.h"
+#include "quiz/FileQuizProgressStore.h"
+
 #include "dispenser/MockDispenser.h"
 
 #include "ui/HomeScreen.h"
@@ -19,7 +26,7 @@ int main()
 
 
     // =================================================
-    // CREATE SIMULATED DISPLAY
+    // DISPLAY
     // =================================================
 
     lv_display_t* display =
@@ -30,7 +37,7 @@ int main()
 
 
     // =================================================
-    // MOUSE = TOUCHSCREEN
+    // INPUT
     // =================================================
 
     lv_indev_t* mouse =
@@ -43,37 +50,67 @@ int main()
 
 
     // =================================================
-    // GAME
+    // APP CONFIG
+    // =================================================
+
+    AppConfig config;
+
+    config.quizDatasetPath =
+        "../dataset/sample/quizzes.jsonl";
+
+    config.quizProgressPath =
+        "../dataset/progress/quiz_progress.json";
+
+    config.gameProgressPath =
+        "../dataset/progress/game_progress.json";
+
+
+    // =================================================
+    // PLATFORM IMPLEMENTATIONS
     // =================================================
 
     MockDispenser dispenser;
 
+
+    FileQuizSource quizSource(
+        config.quizDatasetPath
+    );
+
+
+    FileQuizProgressStore quizProgressStore(
+        config.quizProgressPath
+    );
+
+
+    FileGameProgressStore gameProgressStore(
+        config.gameProgressPath
+    );
+
+
+    // =================================================
+    // GAME MANAGER
+    // =================================================
+
     GameManager game(
-        dispenser
+        dispenser,
+        quizSource,
+        quizProgressStore,
+        gameProgressStore
     );
 
 
     // =================================================
     // STARTUP ROUTING
     // =================================================
-    //
-    // If the user already solved a quiz but did not
-    // receive a candy yet, restore Candy Select.
-    //
-    // Otherwise show normal Home screen.
-    // =================================================
 
     if (
         game.hasPendingReward()
     ) {
-
         CandySelectScreen::create(
             game
         );
     }
-
     else {
-
         HomeScreen::create(
             game
         );
@@ -81,7 +118,7 @@ int main()
 
 
     // =================================================
-    // LVGL MAIN LOOP
+    // LVGL LOOP
     // =================================================
 
     while (true) {
@@ -89,16 +126,13 @@ int main()
         uint32_t wait =
             lv_timer_handler();
 
-
         if (wait < 1) {
             wait = 1;
         }
 
-
         if (wait > 10) {
             wait = 10;
         }
-
 
         std::this_thread::sleep_for(
             std::chrono::milliseconds(

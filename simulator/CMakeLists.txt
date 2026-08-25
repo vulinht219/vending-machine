@@ -58,12 +58,13 @@ add_executable(candy-simulator
     src/ui/theme/Theme.cpp
 
     ../core/src/game/GameManager.cpp
-    ../core/src/game/GameProgressStore.cpp
     ../core/src/quiz/QuizManager.cpp
     ../core/src/quiz/QuizLoader.cpp
     ../core/src/quiz/AnswerValidator.cpp
-    ../core/src/quiz/QuizProgressStore.cpp
     ../core/src/quiz/QuizValidator.cpp
+    ../core/src/quiz/FileQuizSource.cpp
+    ../core/src/quiz/FileQuizProgressStore.cpp
+    ../core/src/game/FileGameProgressStore.cpp
     
 
     ../firmware/src/dispenser/MockDispenser.cpp

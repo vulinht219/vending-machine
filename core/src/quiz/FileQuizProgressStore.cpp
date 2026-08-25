@@ -1,4 +1,4 @@
-#include "QuizProgressStore.h"
+#include "FileQuizProgressStore.h"
 
 #include <filesystem>
 #include <fstream>
@@ -9,7 +9,7 @@
 using json = nlohmann::json;
 
 
-QuizProgressStore::QuizProgressStore(
+FileQuizProgressStore::FileQuizProgressStore(
     const std::string& filePath
 )
     : filePath(filePath)
@@ -17,11 +17,7 @@ QuizProgressStore::QuizProgressStore(
 }
 
 
-// =====================================================
-// EXISTS
-// =====================================================
-
-bool QuizProgressStore::exists() const
+bool FileQuizProgressStore::exists() const
 {
     return std::filesystem::exists(
         filePath
@@ -29,11 +25,7 @@ bool QuizProgressStore::exists() const
 }
 
 
-// =====================================================
-// LOAD
-// =====================================================
-
-QuizProgress QuizProgressStore::load() const
+QuizProgress FileQuizProgressStore::load() const
 {
     std::ifstream file(
         filePath
@@ -49,6 +41,7 @@ QuizProgress QuizProgressStore::load() const
     json data;
 
     file >> data;
+
 
     QuizProgress progress;
 
@@ -70,15 +63,12 @@ QuizProgress QuizProgressStore::load() const
             1
         );
 
+
     return progress;
 }
 
 
-// =====================================================
-// SAVE
-// =====================================================
-
-void QuizProgressStore::save(
+void FileQuizProgressStore::save(
     const QuizProgress& progress
 ) const
 {
@@ -86,10 +76,7 @@ void QuizProgressStore::save(
         filePath
     );
 
-    // Create parent directory if needed.
-    if (
-        path.has_parent_path()
-    ) {
+    if (path.has_parent_path()) {
         std::filesystem::create_directories(
             path.parent_path()
         );
@@ -101,16 +88,14 @@ void QuizProgressStore::save(
             "seed",
             progress.seed
         },
-
         {
             "currentPosition",
             progress.currentPosition
         },
-
         {
             "round",
             progress.round
-        }, 
+        },
         {
             "datasetVersion",
             progress.datasetVersion
@@ -123,7 +108,6 @@ void QuizProgressStore::save(
     );
 
     if (!file.is_open()) {
-
         throw std::runtime_error(
             "Could not save quiz progress file: "
             + filePath

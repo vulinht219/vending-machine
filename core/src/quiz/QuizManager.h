@@ -2,7 +2,8 @@
 
 #include "Quiz.h"
 #include "QuizProgress.h"
-#include "QuizProgressStore.h"
+#include "IQuizSource.h"
+#include "IQuizProgressStore.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -11,22 +12,38 @@
 
 class QuizManager {
 public:
-    QuizManager();
+
+    QuizManager(
+        IQuizSource& quizSource,
+        IQuizProgressStore& progressStore
+    );
+
 
     Quiz getCurrentQuiz() const;
 
+
     void moveToNextQuiz();
 
+
 private:
-    static constexpr std::uint32_t CURRENT_DATASET_VERSION = 1;
+
+    // Increase this whenever the production dataset
+    // changes in a way that should reset quiz progress.
+    static constexpr std::uint32_t
+        CURRENT_DATASET_VERSION = 2;
+
 
     std::vector<Quiz> quizzes;
 
     std::vector<std::size_t> shuffledOrder;
 
+
     QuizProgress progress;
 
-    QuizProgressStore progressStore;
+
+    IQuizSource& quizSource;
+
+    IQuizProgressStore& progressStore;
 
 
     void initializeProgress();
@@ -36,5 +53,4 @@ private:
     void startNewRound();
 
     std::uint32_t generateSeed();
-    
 };

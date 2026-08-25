@@ -1,6 +1,5 @@
 #include "QuizManager.h"
 
-#include "QuizLoader.h"
 #include "QuizValidator.h"
 
 #include <algorithm>
@@ -13,19 +12,19 @@
 // CONSTRUCTOR
 // =====================================================
 
-QuizManager::QuizManager()
-    : progressStore(
-        "../dataset/progress/quiz_progress.json"
-    )
+QuizManager::QuizManager(
+    IQuizSource& quizSource,
+    IQuizProgressStore& progressStore
+)
+    : quizSource(quizSource),
+      progressStore(progressStore)
 {
     // =============================================
     // LOAD DATASET
     // =============================================
 
     quizzes =
-        QuizLoader::loadFromJsonLines(
-            "../dataset/sample/quizzes.jsonl"
-        );
+        quizSource.loadAll();
 
 
     // =============================================
@@ -38,14 +37,14 @@ QuizManager::QuizManager()
 
 
     // =============================================
-    // LOAD OR CREATE PROGRESS
+    // LOAD / CREATE PROGRESS
     // =============================================
 
     initializeProgress();
 
 
     // =============================================
-    // RECREATE SHUFFLE
+    // RECREATE RANDOM ORDER
     // =============================================
 
     buildShuffleOrder();
@@ -53,7 +52,7 @@ QuizManager::QuizManager()
 
 
 // =====================================================
-// GENERATE RANDOM SEED
+// GENERATE SEED
 // =====================================================
 
 std::uint32_t QuizManager::generateSeed()
@@ -70,6 +69,10 @@ std::uint32_t QuizManager::generateSeed()
 
 void QuizManager::initializeProgress()
 {
+    // =============================================
+    // EXISTING PROGRESS
+    // =============================================
+
     if (
         progressStore.exists()
     ) {
@@ -77,9 +80,9 @@ void QuizManager::initializeProgress()
             progressStore.load();
 
 
-        // =============================================
+        // -----------------------------------------
         // DATASET VERSION CHANGED
-        // =============================================
+        // -----------------------------------------
 
         if (
             progress.datasetVersion
@@ -97,6 +100,7 @@ void QuizManager::initializeProgress()
             progress.datasetVersion =
                 CURRENT_DATASET_VERSION;
 
+
             progressStore.save(
                 progress
             );
@@ -105,9 +109,9 @@ void QuizManager::initializeProgress()
         }
 
 
-        // =============================================
-        // INVALID POSITION
-        // =============================================
+        // -----------------------------------------
+        // INVALID SAVED POSITION
+        // -----------------------------------------
 
         if (
             progress.currentPosition
@@ -125,38 +129,45 @@ void QuizManager::initializeProgress()
             progress.datasetVersion =
                 CURRENT_DATASET_VERSION;
 
+
             progressStore.save(
                 progress
             );
 
             return;
         }
+
+
+        // Existing progress is valid.
+        return;
     }
 
-    else {
 
-        progress.seed =
-            generateSeed();
+    // =============================================
+    // FIRST RUN
+    // =============================================
 
-        progress.currentPosition =
-            0;
+    progress.seed =
+        generateSeed();
 
-        progress.round =
-            1;
+    progress.currentPosition =
+        0;
 
-        progress.datasetVersion =
-            CURRENT_DATASET_VERSION;
+    progress.round =
+        1;
+
+    progress.datasetVersion =
+        CURRENT_DATASET_VERSION;
 
 
-        progressStore.save(
-            progress
-        );
-    }
+    progressStore.save(
+        progress
+    );
 }
 
 
 // =====================================================
-// BUILD SAME RANDOM ORDER FROM SEED
+// BUILD SHUFFLE ORDER
 // =====================================================
 
 void QuizManager::buildShuffleOrder()
@@ -166,6 +177,10 @@ void QuizManager::buildShuffleOrder()
     );
 
 
+    // Creates:
+    //
+    // 0, 1, 2, 3, ...
+    //
     std::iota(
         shuffledOrder.begin(),
         shuffledOrder.end(),
@@ -173,6 +188,7 @@ void QuizManager::buildShuffleOrder()
     );
 
 
+    // Same seed creates same order.
     std::mt19937 generator(
         progress.seed
     );
@@ -187,7 +203,7 @@ void QuizManager::buildShuffleOrder()
 
 
 // =====================================================
-// GET CURRENT QUIZ
+// CURRENT QUIZ
 // =====================================================
 
 Quiz QuizManager::getCurrentQuiz() const
@@ -196,6 +212,16 @@ Quiz QuizManager::getCurrentQuiz() const
 
         throw std::runtime_error(
             "Quiz dataset is empty."
+        );
+    }
+
+
+    if (
+        progress.currentPosition
+        >= shuffledOrder.size()
+    ) {
+        throw std::runtime_error(
+            "Quiz progress position is invalid."
         );
     }
 
@@ -213,7 +239,7 @@ Quiz QuizManager::getCurrentQuiz() const
 
 
 // =====================================================
-// MOVE TO NEXT QUIZ
+// NEXT QUIZ
 // =====================================================
 
 void QuizManager::moveToNextQuiz()
@@ -230,12 +256,13 @@ void QuizManager::moveToNextQuiz()
         >= quizzes.size()
     ) {
         startNewRound();
+
         return;
     }
 
 
     // =============================================
-    // SAVE PROGRESS
+    // SAVE CURRENT POSITION
     // =============================================
 
     progressStore.save(
@@ -245,7 +272,7 @@ void QuizManager::moveToNextQuiz()
 
 
 // =====================================================
-// START NEW ROUND
+// NEW ROUND
 // =====================================================
 
 void QuizManager::startNewRound()
@@ -258,8 +285,11 @@ void QuizManager::startNewRound()
     progress.currentPosition =
         0;
 
+    progress.datasetVersion =
+        CURRENT_DATASET_VERSION;
 
-    // New seed = new shuffled order.
+
+    // New seed → completely new order.
     buildShuffleOrder();
 
 

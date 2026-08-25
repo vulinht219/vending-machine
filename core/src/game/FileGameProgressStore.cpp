@@ -1,4 +1,4 @@
-#include "GameProgressStore.h"
+#include "FileGameProgressStore.h"
 
 #include <filesystem>
 #include <fstream>
@@ -9,7 +9,7 @@
 using json = nlohmann::json;
 
 
-GameProgressStore::GameProgressStore(
+FileGameProgressStore::FileGameProgressStore(
     const std::string& filePath
 )
     : filePath(filePath)
@@ -17,7 +17,7 @@ GameProgressStore::GameProgressStore(
 }
 
 
-bool GameProgressStore::exists() const
+bool FileGameProgressStore::exists() const
 {
     return std::filesystem::exists(
         filePath
@@ -25,9 +25,11 @@ bool GameProgressStore::exists() const
 }
 
 
-GameProgress GameProgressStore::load() const
+GameProgress FileGameProgressStore::load() const
 {
-    std::ifstream file(filePath);
+    std::ifstream file(
+        filePath
+    );
 
     if (!file.is_open()) {
         throw std::runtime_error(
@@ -36,9 +38,11 @@ GameProgress GameProgressStore::load() const
         );
     }
 
+
     json data;
 
     file >> data;
+
 
     GameProgress progress;
 
@@ -48,11 +52,12 @@ GameProgress GameProgressStore::load() const
             false
         );
 
+
     return progress;
 }
 
 
-void GameProgressStore::save(
+void FileGameProgressStore::save(
     const GameProgress& progress
 ) const
 {
@@ -66,6 +71,7 @@ void GameProgressStore::save(
         );
     }
 
+
     json data = {
         {
             "pendingReward",
@@ -73,7 +79,10 @@ void GameProgressStore::save(
         }
     };
 
-    std::ofstream file(filePath);
+
+    std::ofstream file(
+        filePath
+    );
 
     if (!file.is_open()) {
         throw std::runtime_error(
@@ -81,6 +90,7 @@ void GameProgressStore::save(
             + filePath
         );
     }
+
 
     file << data.dump(4);
 }

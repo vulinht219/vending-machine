@@ -4,11 +4,14 @@
 
 #include "quiz/Quiz.h"
 #include "quiz/QuizManager.h"
+#include "quiz/IQuizSource.h"
+#include "quiz/IQuizProgressStore.h"
 #include "quiz/AnswerValidator.h"
+
 #include "dispenser/IDispenser.h"
 
 #include "GameProgress.h"
-#include "GameProgressStore.h"
+#include "IGameProgressStore.h"
 
 
 enum class GameState {
@@ -24,35 +27,31 @@ enum class GameState {
 
 class GameManager {
 public:
-    explicit GameManager(
-        IDispenser& dispenser
+
+    GameManager(
+        IDispenser& dispenser,
+        IQuizSource& quizSource,
+        IQuizProgressStore& quizProgressStore,
+        IGameProgressStore& gameProgressStore
     );
 
 
-    // Start quiz flow
     void startGame();
 
-
-    // User confirms cancel:
-    // current quiz is consumed
     void cancelGame();
 
-
-    // Wrong answer:
-    // stay on same quiz
     void retryQuiz();
 
 
-    // Check submitted answer
     bool submitAnswer(
         const std::string& answer
     );
 
 
-    // Dispense selected candy
     bool selectCandy(
         int slot
     );
+
 
     bool hasPendingReward() const;
 
@@ -64,6 +63,7 @@ public:
 
 
 private:
+
     GameState state;
 
     QuizManager quizManager;
@@ -74,5 +74,5 @@ private:
 
     GameProgress progress;
 
-    GameProgressStore progressStore;
+    IGameProgressStore& progressStore;
 };
