@@ -1,19 +1,45 @@
 #include "FileQuizSource.h"
 
 #include "QuizLoader.h"
+#include "QuizValidator.h"
+
+#include <stdexcept>
 
 
 FileQuizSource::FileQuizSource(
     const std::string& filePath
 )
-    : filePath(filePath)
 {
+    quizzes =
+        QuizLoader::loadFromJsonLines(
+            filePath
+        );
+
+
+    QuizValidator::validateDataset(
+        quizzes
+    );
 }
 
 
-std::vector<Quiz> FileQuizSource::loadAll()
+std::size_t FileQuizSource::size() const
 {
-    return QuizLoader::loadFromJsonLines(
-        filePath
-    );
+    return quizzes.size();
+}
+
+
+Quiz FileQuizSource::getQuiz(
+    std::size_t index
+)
+{
+    if (
+        index >= quizzes.size()
+    ) {
+        throw std::runtime_error(
+            "Quiz index out of range."
+        );
+    }
+
+
+    return quizzes[index];
 }

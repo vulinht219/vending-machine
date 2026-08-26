@@ -1,16 +1,10 @@
 #include "QuizManager.h"
 
-#include "QuizValidator.h"
-
 #include <algorithm>
 #include <numeric>
 #include <random>
 #include <stdexcept>
 
-
-// =====================================================
-// CONSTRUCTOR
-// =====================================================
 
 QuizManager::QuizManager(
     IQuizSource& quizSource,
@@ -19,41 +13,22 @@ QuizManager::QuizManager(
     : quizSource(quizSource),
       progressStore(progressStore)
 {
-    // =============================================
-    // LOAD DATASET
-    // =============================================
-
-    quizzes =
-        quizSource.loadAll();
+    quizCount =
+        quizSource.size();
 
 
-    // =============================================
-    // VALIDATE DATASET
-    // =============================================
+    if (quizCount == 0) {
+        throw std::runtime_error(
+            "Quiz dataset is empty."
+        );
+    }
 
-    QuizValidator::validateDataset(
-        quizzes
-    );
-
-
-    // =============================================
-    // LOAD / CREATE PROGRESS
-    // =============================================
 
     initializeProgress();
-
-
-    // =============================================
-    // RECREATE RANDOM ORDER
-    // =============================================
 
     buildShuffleOrder();
 }
 
-
-// =====================================================
-// GENERATE SEED
-// =====================================================
 
 std::uint32_t QuizManager::generateSeed()
 {
@@ -63,26 +38,14 @@ std::uint32_t QuizManager::generateSeed()
 }
 
 
-// =====================================================
-// INITIALIZE PROGRESS
-// =====================================================
-
 void QuizManager::initializeProgress()
 {
-    // =============================================
-    // EXISTING PROGRESS
-    // =============================================
-
     if (
         progressStore.exists()
     ) {
         progress =
             progressStore.load();
 
-
-        // -----------------------------------------
-        // DATASET VERSION CHANGED
-        // -----------------------------------------
 
         if (
             progress.datasetVersion
@@ -100,7 +63,6 @@ void QuizManager::initializeProgress()
             progress.datasetVersion =
                 CURRENT_DATASET_VERSION;
 
-
             progressStore.save(
                 progress
             );
@@ -109,13 +71,9 @@ void QuizManager::initializeProgress()
         }
 
 
-        // -----------------------------------------
-        // INVALID SAVED POSITION
-        // -----------------------------------------
-
         if (
             progress.currentPosition
-            >= quizzes.size()
+            >= quizCount
         ) {
             progress.seed =
                 generateSeed();
@@ -129,23 +87,14 @@ void QuizManager::initializeProgress()
             progress.datasetVersion =
                 CURRENT_DATASET_VERSION;
 
-
             progressStore.save(
                 progress
             );
-
-            return;
         }
 
-
-        // Existing progress is valid.
         return;
     }
 
-
-    // =============================================
-    // FIRST RUN
-    // =============================================
 
     progress.seed =
         generateSeed();
@@ -166,21 +115,13 @@ void QuizManager::initializeProgress()
 }
 
 
-// =====================================================
-// BUILD SHUFFLE ORDER
-// =====================================================
-
 void QuizManager::buildShuffleOrder()
 {
     shuffledOrder.resize(
-        quizzes.size()
+        quizCount
     );
 
 
-    // Creates:
-    //
-    // 0, 1, 2, 3, ...
-    //
     std::iota(
         shuffledOrder.begin(),
         shuffledOrder.end(),
@@ -188,7 +129,6 @@ void QuizManager::buildShuffleOrder()
     );
 
 
-    // Same seed creates same order.
     std::mt19937 generator(
         progress.seed
     );
@@ -202,20 +142,8 @@ void QuizManager::buildShuffleOrder()
 }
 
 
-// =====================================================
-// CURRENT QUIZ
-// =====================================================
-
-Quiz QuizManager::getCurrentQuiz() const
+Quiz QuizManager::getCurrentQuiz()
 {
-    if (quizzes.empty()) {
-
-        throw std::runtime_error(
-            "Quiz dataset is empty."
-        );
-    }
-
-
     if (
         progress.currentPosition
         >= shuffledOrder.size()
@@ -232,28 +160,20 @@ Quiz QuizManager::getCurrentQuiz() const
         ];
 
 
-    return quizzes[
+    return quizSource.getQuiz(
         quizIndex
-    ];
+    );
 }
 
-
-// =====================================================
-// NEXT QUIZ
-// =====================================================
 
 void QuizManager::moveToNextQuiz()
 {
     progress.currentPosition++;
 
 
-    // =============================================
-    // END OF ROUND
-    // =============================================
-
     if (
         progress.currentPosition
-        >= quizzes.size()
+        >= quizCount
     ) {
         startNewRound();
 
@@ -261,19 +181,11 @@ void QuizManager::moveToNextQuiz()
     }
 
 
-    // =============================================
-    // SAVE CURRENT POSITION
-    // =============================================
-
     progressStore.save(
         progress
     );
 }
 
-
-// =====================================================
-// NEW ROUND
-// =====================================================
 
 void QuizManager::startNewRound()
 {
@@ -289,7 +201,6 @@ void QuizManager::startNewRound()
         CURRENT_DATASET_VERSION;
 
 
-    // New seed → completely new order.
     buildShuffleOrder();
 
 

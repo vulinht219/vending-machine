@@ -2,12 +2,16 @@
 
 #include "Quiz.h"
 
-#include <vector>
+#include <cstddef>
 
 
 class IQuizSource {
 public:
     virtual ~IQuizSource() = default;
 
-    virtual std::vector<Quiz> loadAll() = 0;
+    virtual std::size_t size() const = 0;
+
+    virtual Quiz getQuiz(
+        std::size_t index
+    ) = 0;
 };

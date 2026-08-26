@@ -75,6 +75,7 @@ target_include_directories(candy-simulator PRIVATE
     ${LVGL_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../firmware/src
+
 )
 
 target_compile_definitions(candy-simulator PRIVATE
@@ -84,4 +85,24 @@ target_compile_definitions(candy-simulator PRIVATE
 target_link_libraries(candy-simulator PRIVATE
     lvgl
     SDL2
+)
+
+# =====================================================
+# SD CARD QUIZ SOURCE TEST
+# =====================================================
+
+add_executable(
+    test-sd-quiz-source
+
+    src/test_sd_quiz_source.cpp
+
+    ../firmware/components/platform/SDCardQuizSource.cpp
+)
+
+target_include_directories(
+    test-sd-quiz-source
+    PRIVATE
+
+    ../core/src
+    ../firmware/components/platform
 )

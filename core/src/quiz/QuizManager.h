@@ -19,7 +19,7 @@ public:
     );
 
 
-    Quiz getCurrentQuiz() const;
+    Quiz getCurrentQuiz();
 
 
     void moveToNextQuiz();
@@ -27,19 +27,15 @@ public:
 
 private:
 
-    // Increase this whenever the production dataset
-    // changes in a way that should reset quiz progress.
     static constexpr std::uint32_t
-        CURRENT_DATASET_VERSION = 2;
+        CURRENT_DATASET_VERSION = 3;
 
 
-    std::vector<Quiz> quizzes;
+    std::size_t quizCount = 0;
 
     std::vector<std::size_t> shuffledOrder;
 
-
     QuizProgress progress;
-
 
     IQuizSource& quizSource;
 

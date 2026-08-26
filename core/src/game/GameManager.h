@@ -59,7 +59,7 @@ public:
     GameState getState() const;
 
 
-    Quiz getCurrentQuiz() const;
+    Quiz getCurrentQuiz();
 
 
 private:

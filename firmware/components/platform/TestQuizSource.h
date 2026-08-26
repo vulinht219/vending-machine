@@ -1,23 +1,18 @@
 #pragma once
 
-#include "IQuizSource.h"
+#include "quiz/IQuizSource.h"
 
-#include <string>
 #include <vector>
 
 
-class FileQuizSource
+class TestQuizSource
     : public IQuizSource
 {
 public:
 
-    explicit FileQuizSource(
-        const std::string& filePath
-    );
-
+    TestQuizSource();
 
     std::size_t size() const override;
-
 
     Quiz getQuiz(
         std::size_t index

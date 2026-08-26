@@ -977,22 +977,33 @@ void QuizScreen::createMultipleChoiceInput(
     answerLabel = nullptr;
 
 
+    // =================================================
+    // OPTIONS CONTAINER
+    // =================================================
+
     lv_obj_t* optionsContainer =
         lv_obj_create(parent);
+
 
     lv_obj_set_width(
         optionsContainer,
         LV_PCT(95)
     );
 
+
+    // Fixed viewport height.
+    // If the answers need more space,
+    // this container becomes vertically scrollable.
     lv_obj_set_height(
         optionsContainer,
-        210
+        LV_SIZE_CONTENT
     );
+
 
     Theme::applyPanel(
         optionsContainer
     );
+
 
     lv_obj_set_style_pad_all(
         optionsContainer,
@@ -1000,16 +1011,23 @@ void QuizScreen::createMultipleChoiceInput(
         0
     );
 
+
     lv_obj_set_style_pad_row(
         optionsContainer,
         Theme::SPACING_SM,
         0
     );
 
+
+    // =================================================
+    // VERTICAL FLEX LAYOUT
+    // =================================================
+
     lv_obj_set_flex_flow(
         optionsContainer,
         LV_FLEX_FLOW_COLUMN
     );
+
 
     lv_obj_set_flex_align(
         optionsContainer,
@@ -1020,6 +1038,25 @@ void QuizScreen::createMultipleChoiceInput(
     );
 
 
+    // =================================================
+    // ENABLE VERTICAL SCROLL
+    // =================================================
+
+    lv_obj_set_scrollbar_mode(
+        optionsContainer,
+        LV_SCROLLBAR_MODE_OFF
+    );
+
+    lv_obj_remove_flag(
+        optionsContainer,
+        LV_OBJ_FLAG_SCROLLABLE
+    );
+
+
+    // =================================================
+    // OPTION LETTERS
+    // =================================================
+
     const char* letters[] = {
         "A",
         "B",
@@ -1027,6 +1064,10 @@ void QuizScreen::createMultipleChoiceInput(
         "D"
     };
 
+
+    // =================================================
+    // CREATE ANSWER BUTTONS
+    // =================================================
 
     for (int i = 0; i < 4; i++) {
 
@@ -1040,6 +1081,10 @@ void QuizScreen::createMultipleChoiceInput(
         }
 
 
+        // =============================================
+        // BUTTON
+        // =============================================
+
         lv_obj_t* button =
             lv_button_create(
                 optionsContainer
@@ -1051,9 +1096,41 @@ void QuizScreen::createMultipleChoiceInput(
             LV_PCT(100)
         );
 
+
+        // IMPORTANT:
+        //
+        // Do NOT use a fixed 42px height.
+        // The button now grows depending
+        // on how many lines the answer needs.
         lv_obj_set_height(
             button,
-            42
+            LV_SIZE_CONTENT
+        );
+
+
+        // Give wrapped text enough vertical space.
+        lv_obj_set_style_pad_top(
+            button,
+            10,
+            0
+        );
+
+        lv_obj_set_style_pad_bottom(
+            button,
+            10,
+            0
+        );
+
+        lv_obj_set_style_pad_left(
+            button,
+            10,
+            0
+        );
+
+        lv_obj_set_style_pad_right(
+            button,
+            10,
+            0
         );
 
 
@@ -1062,8 +1139,14 @@ void QuizScreen::createMultipleChoiceInput(
         );
 
 
+        // =============================================
+        // LABEL
+        // =============================================
+
         lv_obj_t* label =
-            lv_label_create(button);
+            lv_label_create(
+                button
+            );
 
 
         std::string text =
@@ -1080,12 +1163,16 @@ void QuizScreen::createMultipleChoiceInput(
         );
 
 
+        // Almost entire button width.
+        // This gives LVGL a known width at which
+        // it can wrap the text.
         lv_obj_set_width(
             label,
-            LV_PCT(92)
+            LV_PCT(95)
         );
 
 
+        // Long answers continue on another line.
         lv_label_set_long_mode(
             label,
             LV_LABEL_LONG_WRAP
@@ -1104,8 +1191,16 @@ void QuizScreen::createMultipleChoiceInput(
         );
 
 
-        lv_obj_center(label);
+        // Center the entire wrapped label
+        // vertically/horizontally inside the button.
+        lv_obj_center(
+            label
+        );
 
+
+        // =============================================
+        // CLICK EVENT
+        // =============================================
 
         lv_obj_add_event_cb(
             button,

@@ -208,7 +208,7 @@ GameState GameManager::getState() const
 // CURRENT QUIZ
 // =====================================================
 
-Quiz GameManager::getCurrentQuiz() const
+Quiz GameManager::getCurrentQuiz()
 {
     return quizManager.getCurrentQuiz();
 }
