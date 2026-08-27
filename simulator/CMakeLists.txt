@@ -54,6 +54,9 @@ add_executable(candy-simulator
     src/ui/QuizScreen.cpp
     src/ui/CandySelectScreen.cpp
     src/ui/DispensingScreen.cpp
+    src/ui/SpecialEventScreen.cpp
+    src/platform/FileSpecialEventProgressStore.cpp
+    src/app/AppController.cpp
 
     src/ui/theme/Theme.cpp
 
@@ -65,8 +68,11 @@ add_executable(candy-simulator
     ../core/src/quiz/FileQuizSource.cpp
     ../core/src/quiz/FileQuizProgressStore.cpp
     ../core/src/game/FileGameProgressStore.cpp
-    
+    ../core/src/app/StartupRouter.cpp
 
+    ../core/src/event/SpecialEventCalendar.cpp
+    ../core/src/event/SpecialEventManager.cpp
+    
     ../firmware/src/dispenser/MockDispenser.cpp
 )
 
@@ -75,6 +81,7 @@ target_include_directories(candy-simulator PRIVATE
     ${LVGL_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../firmware/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 
 )
 
@@ -105,4 +112,28 @@ target_include_directories(
 
     ../core/src
     ../firmware/components/platform
+)
+
+# =====================================================
+# SPECIAL EVENT LOGIC TEST
+# =====================================================
+
+add_executable(
+    test-special-event
+
+    src/test_special_event.cpp
+
+    ../core/src/event/SpecialEventCalendar.cpp
+    ../core/src/event/SpecialEventManager.cpp
+
+    ../firmware/src/dispenser/MockDispenser.cpp
+)
+
+target_include_directories(
+    test-special-event
+    PRIVATE
+
+    ../core/src
+    ../firmware/src
+    src
 )

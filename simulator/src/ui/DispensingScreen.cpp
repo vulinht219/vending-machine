@@ -1,28 +1,63 @@
 #include "DispensingScreen.h"
+
 #include "HomeScreen.h"
 #include "theme/Theme.h"
 
-GameManager* DispensingScreen::currentGame = nullptr;
-int DispensingScreen::currentCandySlot = 0;
-lv_timer_t* DispensingScreen::dispenseTimer = nullptr;
+
+// =====================================================
+// STATIC DATA
+// =====================================================
+
+GameManager*
+    DispensingScreen::currentGame =
+        nullptr;
+
+
+lv_timer_t*
+    DispensingScreen::dispenseTimer =
+        nullptr;
+
+
+// =====================================================
+// CREATE
+// =====================================================
 
 void DispensingScreen::create(
-    GameManager& game,
-    int candySlot
+    GameManager& game
 )
 {
-    currentGame = &game;
-    currentCandySlot = candySlot;
+    currentGame =
+        &game;
 
-    lv_obj_t* screen = lv_screen_active();
-    lv_obj_clean(screen);
 
-    Theme::applyScreen(screen);
+    lv_obj_t* screen =
+        lv_screen_active();
 
-    // Full-screen container
-    lv_obj_t* content = lv_obj_create(screen);
 
-    Theme::applyPanel(content);
+    lv_obj_clean(
+        screen
+    );
+
+
+    Theme::applyScreen(
+        screen
+    );
+
+
+    // =================================================
+    // FULL SCREEN CONTENT
+    // =====================================================
+
+    lv_obj_t* content =
+        lv_obj_create(
+            screen
+        );
+
+
+    Theme::applyPanel(
+        content
+    );
+
 
     lv_obj_set_size(
         content,
@@ -30,44 +65,65 @@ void DispensingScreen::create(
         LV_PCT(100)
     );
 
+
     lv_obj_set_style_border_width(
         content,
         0,
         0
     );
 
-    // Temporary placeholder.
-    // Later we replace this with GIF / sprite animation.
+
+    // =================================================
+    // TEMPORARY DISPENSING PLACEHOLDER
+    // =================================================
+    //
+    // Later:
+    //
+    // GIF
+    // sprite animation
+    // pixel-art dispensing scene
+    //
+    // =================================================
+
     lv_obj_t* label =
-        lv_label_create(content);
+        lv_label_create(
+            content
+        );
+
 
     lv_label_set_text(
         label,
         "DISPENSING..."
     );
 
-    Theme::applyTitle(label);
 
-    lv_obj_center(label);
+    Theme::applyTitle(
+        label
+    );
 
-    // Start the actual dispensing operation.
-    bool success =
-        currentGame->selectCandy(
-            currentCandySlot
+
+    lv_obj_center(
+        label
+    );
+
+
+    // =================================================
+    // TIMER
+    // =====================================================
+
+    if (
+        dispenseTimer != nullptr
+    ) {
+
+        lv_timer_delete(
+            dispenseTimer
         );
 
-    if (!success) {
-
-        lv_label_set_text(
-            label,
-            "DISPENSE ERROR!"
-        );
-
-        // Later:
-        // ErrorScreen instead of simply returning home.
+        dispenseTimer =
+            nullptr;
     }
 
-    // Keep this screen visible for 5 seconds.
+
     dispenseTimer =
         lv_timer_create(
             dispenseFinished,
@@ -75,17 +131,32 @@ void DispensingScreen::create(
             nullptr
         );
 
+
     lv_timer_set_repeat_count(
         dispenseTimer,
         1
     );
 }
 
+
+// =====================================================
+// FINISHED
+// =====================================================
+
 void DispensingScreen::dispenseFinished(
     lv_timer_t* timer
 )
 {
-    dispenseTimer = nullptr;
+    dispenseTimer =
+        nullptr;
+
+
+    if (
+        currentGame == nullptr
+    ) {
+        return;
+    }
+
 
     HomeScreen::create(
         *currentGame

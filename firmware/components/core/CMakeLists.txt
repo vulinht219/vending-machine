@@ -5,6 +5,10 @@ idf_component_register(
         "../../../core/src/quiz/QuizManager.cpp"
         "../../../core/src/quiz/AnswerValidator.cpp"
         "../../../core/src/quiz/QuizValidator.cpp"
+        
+        "../../../core/src/event/SpecialEventCalendar.cpp"
+        "../../../core/src/event/SpecialEventManager.cpp"
+        "../../../core/src/app/StartupRouter.cpp"
 
     INCLUDE_DIRS
         "../../../core/src"

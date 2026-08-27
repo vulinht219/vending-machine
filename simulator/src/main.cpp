@@ -7,27 +7,35 @@
 #include "config/AppConfig.h"
 
 #include "game/GameManager.h"
-#include "game/FileGameProgressStore.h"
 
 #include "quiz/FileQuizSource.h"
 #include "quiz/FileQuizProgressStore.h"
 
+#include "game/FileGameProgressStore.h"
+
 #include "dispenser/MockDispenser.h"
 
+#include "event/SpecialEventManager.h"
+
+#include "platform/MockClock.h"
+#include "platform/FileSpecialEventProgressStore.h"
 #include "ui/HomeScreen.h"
 #include "ui/CandySelectScreen.h"
+#include "ui/SpecialEventScreen.h"
+
+#include "app/AppController.h"
 
 
 int main()
 {
+    // =================================================
+    // SDL + LVGL
+    // =================================================
+
     SDL_SetMainReady();
 
     lv_init();
 
-
-    // =================================================
-    // DISPLAY
-    // =================================================
 
     lv_display_t* display =
         lv_sdl_window_create(
@@ -36,12 +44,9 @@ int main()
         );
 
 
-    // =================================================
-    // INPUT
-    // =================================================
-
     lv_indev_t* mouse =
         lv_sdl_mouse_create();
+
 
     lv_indev_set_display(
         mouse,
@@ -50,23 +55,26 @@ int main()
 
 
     // =================================================
-    // APP CONFIG
+    // CONFIG
     // =================================================
 
     AppConfig config;
 
+
     config.quizDatasetPath =
-       "../dataset/production/quizzes_1000.jsonl";
+        "../dataset/production/quizzes_1000.jsonl";
+
 
     config.quizProgressPath =
         "../dataset/progress/quiz_progress.json";
+
 
     config.gameProgressPath =
         "../dataset/progress/game_progress.json";
 
 
     // =================================================
-    // PLATFORM IMPLEMENTATIONS
+    // GAME PLATFORM
     // =================================================
 
     MockDispenser dispenser;
@@ -77,19 +85,17 @@ int main()
     );
 
 
-    FileQuizProgressStore quizProgressStore(
-        config.quizProgressPath
-    );
+    FileQuizProgressStore
+        quizProgressStore(
+            config.quizProgressPath
+        );
 
 
-    FileGameProgressStore gameProgressStore(
-        config.gameProgressPath
-    );
+    FileGameProgressStore
+        gameProgressStore(
+            config.gameProgressPath
+        );
 
-
-    // =================================================
-    // GAME MANAGER
-    // =================================================
 
     GameManager game(
         dispenser,
@@ -100,21 +106,56 @@ int main()
 
 
     // =================================================
-    // STARTUP ROUTING
+    // SPECIAL EVENT PLATFORM
+    // =================================================
+    //
+    // TEMP TEST DATE:
+    //
+    // 25 December 2026
+    //
+    // Later simulator can use SystemClock
+    // and firmware will use DS3231Clock.
     // =================================================
 
-    if (
-        game.hasPendingReward()
-    ) {
-        CandySelectScreen::create(
-            game
+    MockClock clock(
+        2026,
+        12,
+        25
+    );
+
+
+    FileSpecialEventProgressStore
+        specialEventProgressStore(
+            "../dataset/progress/special_event_progress.txt"
         );
-    }
-    else {
-        HomeScreen::create(
-            game
+
+
+    SpecialEventManager
+        specialEventManager(
+            clock,
+            specialEventProgressStore,
+            dispenser
         );
-    }
+
+
+    // =================================================
+    // STARTUP ROUTING
+    // =================================================
+    //
+    // Priority:
+    //
+    // 1. Pending quiz reward
+    // 2. Special event
+    // 3. Home
+    //
+    // =================================================
+
+    AppController app(
+        game,
+        specialEventManager
+    );
+
+    app.start();
 
 
     // =================================================
@@ -126,13 +167,16 @@ int main()
         uint32_t wait =
             lv_timer_handler();
 
+
         if (wait < 1) {
             wait = 1;
         }
 
+
         if (wait > 10) {
             wait = 10;
         }
+
 
         std::this_thread::sleep_for(
             std::chrono::milliseconds(

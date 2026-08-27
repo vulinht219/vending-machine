@@ -7,6 +7,8 @@ idf_component_register(
         "RealDispenser.cpp"
         "TestQuizSource.cpp"
         "AppController.cpp"
+        "NVSSpecialEventProgressStore.cpp"
+        "DS3231Clock.cpp"
 
     INCLUDE_DIRS
         "."
@@ -17,6 +19,7 @@ idf_component_register(
         fatfs
         sdmmc
         esp_driver_spi
+        esp_driver_i2c
         driver
 )
 
