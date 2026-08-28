@@ -1,6 +1,7 @@
 #pragma once
 
-class CH422GManager {
+class CH422GManager
+{
 public:
     static bool initialize();
 
@@ -8,4 +9,8 @@ public:
         int exio,
         bool high
     );
+
+private:
+    static bool initialized;
+    static unsigned char outputState;
 };

@@ -9,6 +9,8 @@ idf_component_register(
         "AppController.cpp"
         "NVSSpecialEventProgressStore.cpp"
         "DS3231Clock.cpp"
+        "BoardI2CManager.cpp"
+        "CH422GManager.cpp"
 
     INCLUDE_DIRS
         "."
