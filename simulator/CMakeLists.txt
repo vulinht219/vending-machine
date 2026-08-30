@@ -57,6 +57,7 @@ add_executable(candy-simulator
     src/ui/SpecialEventScreen.cpp
     src/platform/FileSpecialEventProgressStore.cpp
     src/app/AppController.cpp
+    src/ui/fonts/quiz_symbols_18.c
 
     src/ui/theme/Theme.cpp
 
@@ -136,4 +137,23 @@ target_include_directories(
     ../core/src
     ../firmware/src
     src
+)
+
+add_executable(
+    quiz-dataset-test
+
+    ../core/tests/ProductionDatasetIntegrationTest.cpp
+
+    ../core/src/quiz/FileQuizSource.cpp
+    ../core/src/quiz/QuizLoader.cpp
+    ../core/src/quiz/QuizValidator.cpp
+)
+
+target_include_directories(
+    quiz-dataset-test
+
+    PRIVATE
+
+    ../core/src
+    ../core/src/quiz
 )

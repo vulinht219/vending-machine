@@ -19,12 +19,58 @@
 
 #include "platform/MockClock.h"
 #include "platform/FileSpecialEventProgressStore.h"
-#include "ui/HomeScreen.h"
-#include "ui/CandySelectScreen.h"
-#include "ui/SpecialEventScreen.h"
 
 #include "app/AppController.h"
 
+
+namespace {
+
+// =====================================================
+// SIMULATOR DEBUG DATE
+// =====================================================
+//
+// Change only these three values to preview a date.
+//
+// Examples:
+//
+// New Year:
+//   2026, 1, 1
+//
+// Valentine:
+//   2026, 2, 14
+//
+// Birthday:
+//   2026, 9, 21
+//
+// Birthday:
+//   2026, 10, 2
+//
+// Halloween:
+//   2026, 10, 31
+//
+// Christmas:
+//   2026, 12, 25
+//
+// New Year's Eve:
+//   2026, 12, 31
+//
+// Monthiversary:
+//   2026, 8, 25
+//
+// Normal day:
+//   2026, 8, 24
+//
+
+constexpr int DEBUG_YEAR  = 2026;
+constexpr int DEBUG_MONTH = 12;
+constexpr int DEBUG_DAY   = 24;
+
+}
+
+
+// =====================================================
+// MAIN
+// =====================================================
 
 int main()
 {
@@ -39,8 +85,8 @@ int main()
 
     lv_display_t* display =
         lv_sdl_window_create(
-            320,
-            480
+            480,
+            800
         );
 
 
@@ -62,7 +108,7 @@ int main()
 
 
     config.quizDatasetPath =
-        "../dataset/production/quizzes_1000.jsonl";
+        "../dataset/production/quizzes_20000.jsonl";
 
 
     config.quizProgressPath =
@@ -108,19 +154,11 @@ int main()
     // =================================================
     // SPECIAL EVENT PLATFORM
     // =================================================
-    //
-    // TEMP TEST DATE:
-    //
-    // 25 December 2026
-    //
-    // Later simulator can use SystemClock
-    // and firmware will use DS3231Clock.
-    // =================================================
 
     MockClock clock(
-        2026,
-        12,
-        25
+        DEBUG_YEAR,
+        DEBUG_MONTH,
+        DEBUG_DAY
     );
 
 
@@ -154,6 +192,7 @@ int main()
         game,
         specialEventManager
     );
+
 
     app.start();
 

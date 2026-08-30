@@ -25,7 +25,9 @@ void AppController::start()
     {
         case StartupRoute::PENDING_QUIZ_REWARD:
 
-            CandySelectScreen::create(game);
+            CandySelectScreen::create(
+                game
+            );
 
             break;
 
@@ -34,7 +36,8 @@ void AppController::start()
 
             SpecialEventScreen::create(
                 specialEventManager,
-                game
+                game,
+                specialEventManager.getTodayEvent()
             );
 
             break;
@@ -44,7 +47,9 @@ void AppController::start()
 
         default:
 
-            HomeScreen::create(game);
+            HomeScreen::create(
+                game
+            );
 
             break;
     }

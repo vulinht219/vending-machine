@@ -3,6 +3,7 @@
 #include "ui/HomeScreen.h"
 #include "ui/CandySelectScreen.h"
 #include "ui/SpecialEventScreen.h"
+#include "DisplayManager.h"
 
 
 AppController::AppController(
@@ -63,4 +64,40 @@ void AppController::start()
     HomeScreen::create(
         game
     );
+
+    // =====================================================
+    // TEMPORARY LCD HARDWARE SELF TEST
+    // =====================================================
+
+    if (!DisplayManager::initialize())
+    {
+        ESP_LOGE(
+            TAG,
+            "LCD initialization failed"
+        );
+
+        return false;
+    }
+
+
+    if (!DisplayManager::runSelfTest())
+    {
+       ESP_LOGE(
+            TAG,
+            "LCD self-test failed"
+        );
+
+        return false;
+    }
+
+
+    if (!DisplayManager::setBacklight(true))
+    {
+        ESP_LOGE(
+            TAG,
+            "LCD backlight enable failed"
+       );
+
+        return false;
+    }
 }

@@ -3,6 +3,7 @@
 #include <lvgl.h>
 
 #include "event/SpecialEventManager.h"
+#include "event/SpecialEventType.h"
 #include "game/GameManager.h"
 
 
@@ -11,7 +12,8 @@ public:
 
     static void create(
         SpecialEventManager& specialEventManager,
-        GameManager& game
+        GameManager& game,
+        SpecialEventType eventType
     );
 
 

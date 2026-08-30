@@ -35,16 +35,26 @@ void QuizScreen::appendToAnswer(
         return;
     }
 
+
     const char* current =
-        lv_label_get_text(answerLabel);
+        lv_label_get_text(
+            answerLabel
+        );
 
-    std::string answer = current;
 
-    if (answer.length() >= 8) {
+    std::string answer =
+        current;
+
+
+    if (
+        answer.length() >= 8
+    ) {
         return;
     }
 
+
     answer += value;
+
 
     lv_label_set_text(
         answerLabel,
@@ -64,12 +74,18 @@ void QuizScreen::numberButtonEvent(
         return;
     }
 
+
     const char* number =
         static_cast<const char*>(
-            lv_event_get_user_data(event)
+            lv_event_get_user_data(
+                event
+            )
         );
 
-    appendToAnswer(number);
+
+    appendToAnswer(
+        number
+    );
 }
 
 
@@ -84,7 +100,10 @@ void QuizScreen::clearButtonEvent(
         return;
     }
 
-    if (answerLabel != nullptr) {
+
+    if (
+        answerLabel != nullptr
+    ) {
         lv_label_set_text(
             answerLabel,
             ""
@@ -104,16 +123,26 @@ void QuizScreen::backspaceButtonEvent(
         return;
     }
 
-    if (answerLabel == nullptr) {
+
+    if (
+        answerLabel == nullptr
+    ) {
         return;
     }
 
-    std::string answer =
-        lv_label_get_text(answerLabel);
 
-    if (!answer.empty()) {
+    std::string answer =
+        lv_label_get_text(
+            answerLabel
+        );
+
+
+    if (
+        !answer.empty()
+    ) {
         answer.pop_back();
     }
+
 
     lv_label_set_text(
         answerLabel,
@@ -137,20 +166,33 @@ void QuizScreen::multipleChoiceEvent(
         return;
     }
 
+
     int selectedIndex =
         static_cast<int>(
             reinterpret_cast<intptr_t>(
-                lv_event_get_user_data(event)
+                lv_event_get_user_data(
+                    event
+                )
             )
         );
 
+
     std::string answer =
-        std::to_string(selectedIndex);
+        std::to_string(
+            selectedIndex
+        );
+
 
     bool correct =
-        currentGame->submitAnswer(answer);
+        currentGame
+            ->submitAnswer(
+                answer
+            );
 
-    if (correct) {
+
+    if (
+        correct
+    ) {
         showCorrectPopup();
     }
     else {
@@ -174,12 +216,19 @@ void QuizScreen::submitButtonEvent(
         return;
     }
 
-    if (answerLabel == nullptr) {
+
+    if (
+        answerLabel == nullptr
+    ) {
         return;
     }
 
+
     const char* answer =
-        lv_label_get_text(answerLabel);
+        lv_label_get_text(
+            answerLabel
+        );
+
 
     if (
         answer == nullptr ||
@@ -188,10 +237,17 @@ void QuizScreen::submitButtonEvent(
         return;
     }
 
-    bool correct =
-        currentGame->submitAnswer(answer);
 
-    if (correct) {
+    bool correct =
+        currentGame
+            ->submitAnswer(
+                answer
+            );
+
+
+    if (
+        correct
+    ) {
         showCorrectPopup();
     }
     else {
@@ -206,21 +262,29 @@ void QuizScreen::submitButtonEvent(
 
 void QuizScreen::showWrongPopup()
 {
-    if (popupOverlay != nullptr) {
+    if (
+        popupOverlay != nullptr
+    ) {
         return;
     }
+
 
     lv_obj_t* screen =
         lv_screen_active();
 
+
     popupOverlay =
-        lv_obj_create(screen);
+        lv_obj_create(
+            screen
+        );
+
 
     lv_obj_set_size(
         popupOverlay,
         LV_PCT(100),
         LV_PCT(100)
     );
+
 
     lv_obj_align(
         popupOverlay,
@@ -229,28 +293,39 @@ void QuizScreen::showWrongPopup()
         0
     );
 
+
     lv_obj_add_flag(
         popupOverlay,
         LV_OBJ_FLAG_CLICKABLE
     );
 
+
     Theme::applyPanel(
         popupOverlay
     );
+
 
     lv_obj_t* label =
         lv_label_create(
             popupOverlay
         );
 
+
     lv_label_set_text(
         label,
         "WRONG!"
     );
 
-    Theme::applyTitle(label);
 
-    lv_obj_center(label);
+    Theme::applyTitle(
+        label
+    );
+
+
+    lv_obj_center(
+        label
+    );
+
 
     popupTimer =
         lv_timer_create(
@@ -258,6 +333,7 @@ void QuizScreen::showWrongPopup()
             5000,
             nullptr
         );
+
 
     lv_timer_set_repeat_count(
         popupTimer,
@@ -272,21 +348,29 @@ void QuizScreen::showWrongPopup()
 
 void QuizScreen::showCorrectPopup()
 {
-    if (popupOverlay != nullptr) {
+    if (
+        popupOverlay != nullptr
+    ) {
         return;
     }
+
 
     lv_obj_t* screen =
         lv_screen_active();
 
+
     popupOverlay =
-        lv_obj_create(screen);
+        lv_obj_create(
+            screen
+        );
+
 
     lv_obj_set_size(
         popupOverlay,
         LV_PCT(100),
         LV_PCT(100)
     );
+
 
     lv_obj_align(
         popupOverlay,
@@ -295,28 +379,39 @@ void QuizScreen::showCorrectPopup()
         0
     );
 
+
     lv_obj_add_flag(
         popupOverlay,
         LV_OBJ_FLAG_CLICKABLE
     );
 
+
     Theme::applyPanel(
         popupOverlay
     );
+
 
     lv_obj_t* label =
         lv_label_create(
             popupOverlay
         );
 
+
     lv_label_set_text(
         label,
         "CORRECT!"
     );
 
-    Theme::applyTitle(label);
 
-    lv_obj_center(label);
+    Theme::applyTitle(
+        label
+    );
+
+
+    lv_obj_center(
+        label
+    );
+
 
     popupTimer =
         lv_timer_create(
@@ -324,6 +419,7 @@ void QuizScreen::showCorrectPopup()
             5000,
             nullptr
         );
+
 
     lv_timer_set_repeat_count(
         popupTimer,
@@ -340,18 +436,27 @@ void QuizScreen::wrongPopupFinished(
     lv_timer_t* timer
 )
 {
-    currentGame->retryQuiz();
+    currentGame
+        ->retryQuiz();
 
-    if (popupOverlay != nullptr) {
+
+    if (
+        popupOverlay != nullptr
+    ) {
 
         lv_obj_delete(
             popupOverlay
         );
 
-        popupOverlay = nullptr;
+
+        popupOverlay =
+            nullptr;
     }
 
-    if (answerLabel != nullptr) {
+
+    if (
+        answerLabel != nullptr
+    ) {
 
         lv_label_set_text(
             answerLabel,
@@ -359,7 +464,9 @@ void QuizScreen::wrongPopupFinished(
         );
     }
 
-    popupTimer = nullptr;
+
+    popupTimer =
+        nullptr;
 }
 
 
@@ -371,8 +478,13 @@ void QuizScreen::correctPopupFinished(
     lv_timer_t* timer
 )
 {
-    popupTimer = nullptr;
-    popupOverlay = nullptr;
+    popupTimer =
+        nullptr;
+
+
+    popupOverlay =
+        nullptr;
+
 
     CandySelectScreen::create(
         *currentGame
@@ -395,6 +507,7 @@ void QuizScreen::cancelButtonEvent(
         return;
     }
 
+
     showCancelConfirmation();
 }
 
@@ -405,9 +518,12 @@ void QuizScreen::cancelButtonEvent(
 
 void QuizScreen::showCancelConfirmation()
 {
-    if (cancelOverlay != nullptr) {
+    if (
+        cancelOverlay != nullptr
+    ) {
         return;
     }
+
 
     lv_obj_t* screen =
         lv_screen_active();
@@ -418,7 +534,10 @@ void QuizScreen::showCancelConfirmation()
     // =================================================
 
     cancelOverlay =
-        lv_obj_create(screen);
+        lv_obj_create(
+            screen
+        );
+
 
     lv_obj_set_size(
         cancelOverlay,
@@ -426,11 +545,15 @@ void QuizScreen::showCancelConfirmation()
         LV_PCT(100)
     );
 
+
     lv_obj_set_style_bg_color(
         cancelOverlay,
-        lv_color_hex(0x000000),
+        lv_color_hex(
+            0x000000
+        ),
         0
     );
+
 
     lv_obj_set_style_bg_opa(
         cancelOverlay,
@@ -438,17 +561,20 @@ void QuizScreen::showCancelConfirmation()
         0
     );
 
+
     lv_obj_set_style_border_width(
         cancelOverlay,
         0,
         0
     );
 
+
     lv_obj_set_style_pad_all(
         cancelOverlay,
         0,
         0
     );
+
 
     lv_obj_add_flag(
         cancelOverlay,
@@ -461,21 +587,32 @@ void QuizScreen::showCancelConfirmation()
     // =================================================
 
     lv_obj_t* popup =
-        lv_obj_create(cancelOverlay);
+        lv_obj_create(
+            cancelOverlay
+        );
+
 
     lv_obj_set_width(
         popup,
-        LV_PCT(85)
+        LV_PCT(80)
     );
+
 
     lv_obj_set_height(
         popup,
-        190
+        220
     );
 
-    lv_obj_center(popup);
 
-    Theme::applyPanel(popup);
+    lv_obj_center(
+        popup
+    );
+
+
+    Theme::applyPanel(
+        popup
+    );
+
 
     lv_obj_set_style_pad_all(
         popup,
@@ -483,16 +620,19 @@ void QuizScreen::showCancelConfirmation()
         0
     );
 
+
     lv_obj_set_style_pad_row(
         popup,
-        Theme::SPACING_LG,
+        Theme::SPACING_MD,
         0
     );
+
 
     lv_obj_set_flex_flow(
         popup,
         LV_FLEX_FLOW_COLUMN
     );
+
 
     lv_obj_set_flex_align(
         popup,
@@ -507,28 +647,35 @@ void QuizScreen::showCancelConfirmation()
     // =================================================
 
     lv_obj_t* question =
-        lv_label_create(popup);
+        lv_label_create(
+            popup
+        );
+
 
     lv_label_set_text(
         question,
         "Are you sure you want to leave the quiz?"
     );
 
+
     lv_obj_set_width(
         question,
         LV_PCT(95)
     );
+
 
     lv_label_set_long_mode(
         question,
         LV_LABEL_LONG_WRAP
     );
 
+
     lv_obj_set_style_text_align(
         question,
         LV_TEXT_ALIGN_CENTER,
         0
     );
+
 
     Theme::applyNormalText(
         question
@@ -540,7 +687,10 @@ void QuizScreen::showCancelConfirmation()
     // =================================================
 
     lv_obj_t* buttonRow =
-        lv_obj_create(popup);
+        lv_obj_create(
+            popup
+        );
+
 
     lv_obj_set_size(
         buttonRow,
@@ -548,11 +698,13 @@ void QuizScreen::showCancelConfirmation()
         60
     );
 
+
     lv_obj_set_style_bg_opa(
         buttonRow,
         LV_OPA_TRANSP,
         0
     );
+
 
     lv_obj_set_style_border_width(
         buttonRow,
@@ -560,11 +712,13 @@ void QuizScreen::showCancelConfirmation()
         0
     );
 
+
     lv_obj_set_style_pad_all(
         buttonRow,
         0,
         0
     );
+
 
     lv_obj_set_style_pad_column(
         buttonRow,
@@ -572,10 +726,12 @@ void QuizScreen::showCancelConfirmation()
         0
     );
 
+
     lv_obj_set_flex_flow(
         buttonRow,
         LV_FLEX_FLOW_ROW
     );
+
 
     lv_obj_set_flex_align(
         buttonRow,
@@ -590,31 +746,44 @@ void QuizScreen::showCancelConfirmation()
     // =================================================
 
     lv_obj_t* noButton =
-        lv_button_create(buttonRow);
+        lv_button_create(
+            buttonRow
+        );
+
 
     lv_obj_set_size(
         noButton,
-        90,
-        44
+        105,
+        45
     );
+
 
     Theme::applySecondaryButton(
         noButton
     );
 
+
     lv_obj_t* noLabel =
-        lv_label_create(noButton);
+        lv_label_create(
+            noButton
+        );
+
 
     lv_label_set_text(
         noLabel,
         "NO"
     );
 
+
     Theme::applyButtonText(
         noLabel
     );
 
-    lv_obj_center(noLabel);
+
+    lv_obj_center(
+        noLabel
+    );
+
 
     lv_obj_add_event_cb(
         noButton,
@@ -629,31 +798,44 @@ void QuizScreen::showCancelConfirmation()
     // =================================================
 
     lv_obj_t* yesButton =
-        lv_button_create(buttonRow);
+        lv_button_create(
+            buttonRow
+        );
+
 
     lv_obj_set_size(
         yesButton,
-        90,
-        44
+        105,
+        45
     );
+
 
     Theme::applyPrimaryButton(
         yesButton
     );
 
+
     lv_obj_t* yesLabel =
-        lv_label_create(yesButton);
+        lv_label_create(
+            yesButton
+        );
+
 
     lv_label_set_text(
         yesLabel,
         "YES"
     );
 
+
     Theme::applyButtonText(
         yesLabel
     );
 
-    lv_obj_center(yesLabel);
+
+    lv_obj_center(
+        yesLabel
+    );
+
 
     lv_obj_add_event_cb(
         yesButton,
@@ -679,13 +861,18 @@ void QuizScreen::cancelNoEvent(
         return;
     }
 
-    if (cancelOverlay != nullptr) {
+
+    if (
+        cancelOverlay != nullptr
+    ) {
 
         lv_obj_delete(
             cancelOverlay
         );
 
-        cancelOverlay = nullptr;
+
+        cancelOverlay =
+            nullptr;
     }
 }
 
@@ -705,9 +892,14 @@ void QuizScreen::cancelYesEvent(
         return;
     }
 
-    cancelOverlay = nullptr;
 
-    currentGame->cancelGame();
+    cancelOverlay =
+        nullptr;
+
+
+    currentGame
+        ->cancelGame();
+
 
     HomeScreen::create(
         *currentGame
@@ -728,37 +920,48 @@ void QuizScreen::createNumericInput(
     // =================================================
 
     lv_obj_t* answerBox =
-        lv_obj_create(parent);
+        lv_obj_create(
+            parent
+        );
+
 
     lv_obj_set_width(
         answerBox,
-        LV_PCT(70)
+        LV_PCT(80)
     );
+
 
     lv_obj_set_height(
         answerBox,
-        45
+        60
     );
+
 
     Theme::applyAnswerBox(
         answerBox
     );
+
 
     answerLabel =
         lv_label_create(
             answerBox
         );
 
+
     lv_label_set_text(
         answerLabel,
         ""
     );
 
+
     Theme::applyNormalText(
         answerLabel
     );
 
-    lv_obj_center(answerLabel);
+
+    lv_obj_center(
+        answerLabel
+    );
 
 
     // =================================================
@@ -766,21 +969,27 @@ void QuizScreen::createNumericInput(
     // =================================================
 
     lv_obj_t* keypad =
-        lv_obj_create(parent);
+        lv_obj_create(
+            parent
+        );
+
 
     lv_obj_set_width(
         keypad,
         LV_PCT(95)
     );
 
+
     lv_obj_set_height(
         keypad,
-        175
+        280
     );
+
 
     Theme::applyPanel(
         keypad
     );
+
 
     lv_obj_set_style_pad_all(
         keypad,
@@ -788,11 +997,13 @@ void QuizScreen::createNumericInput(
         0
     );
 
+
     lv_obj_set_style_pad_row(
         keypad,
         Theme::SPACING_SM,
         0
     );
+
 
     lv_obj_set_style_pad_column(
         keypad,
@@ -828,6 +1039,7 @@ void QuizScreen::createNumericInput(
         rows
     );
 
+
     lv_obj_set_layout(
         keypad,
         LV_LAYOUT_GRID
@@ -843,17 +1055,24 @@ void QuizScreen::createNumericInput(
     };
 
 
-    for (int i = 0; i < 12; i++) {
+    for (
+        int i = 0;
+        i < 12;
+        i++
+    ) {
 
         int row =
             i / 3;
+
 
         int column =
             i % 3;
 
 
         lv_obj_t* button =
-            lv_button_create(keypad);
+            lv_button_create(
+                keypad
+            );
 
 
         lv_obj_set_grid_cell(
@@ -875,21 +1094,30 @@ void QuizScreen::createNumericInput(
 
 
         lv_obj_t* label =
-            lv_label_create(button);
+            lv_label_create(
+                button
+            );
+
 
         lv_label_set_text(
             label,
             numbers[i]
         );
 
+
         Theme::applyButtonText(
             label
         );
 
-        lv_obj_center(label);
+
+        lv_obj_center(
+            label
+        );
 
 
-        if (i == 9) {
+        if (
+            i == 9
+        ) {
 
             lv_obj_add_event_cb(
                 button,
@@ -899,7 +1127,9 @@ void QuizScreen::createNumericInput(
             );
         }
 
-        else if (i == 11) {
+        else if (
+            i == 11
+        ) {
 
             lv_obj_add_event_cb(
                 button,
@@ -926,35 +1156,49 @@ void QuizScreen::createNumericInput(
     // =================================================
 
     lv_obj_t* submit =
-        lv_button_create(parent);
+        lv_button_create(
+            parent
+        );
+
 
     lv_obj_set_width(
         submit,
-        LV_PCT(55)
+        LV_PCT(60)
     );
+
 
     lv_obj_set_height(
         submit,
-        40
+        55
     );
+
 
     Theme::applyPrimaryButton(
         submit
     );
 
+
     lv_obj_t* submitLabel =
-        lv_label_create(submit);
+        lv_label_create(
+            submit
+        );
+
 
     lv_label_set_text(
         submitLabel,
         "SUBMIT"
     );
 
+
     Theme::applyButtonText(
         submitLabel
     );
 
-    lv_obj_center(submitLabel);
+
+    lv_obj_center(
+        submitLabel
+    );
+
 
     lv_obj_add_event_cb(
         submit,
@@ -974,7 +1218,8 @@ void QuizScreen::createMultipleChoiceInput(
     const Quiz& quiz
 )
 {
-    answerLabel = nullptr;
+    answerLabel =
+        nullptr;
 
 
     // =================================================
@@ -982,7 +1227,9 @@ void QuizScreen::createMultipleChoiceInput(
     // =================================================
 
     lv_obj_t* optionsContainer =
-        lv_obj_create(parent);
+        lv_obj_create(
+            parent
+        );
 
 
     lv_obj_set_width(
@@ -991,9 +1238,6 @@ void QuizScreen::createMultipleChoiceInput(
     );
 
 
-    // Fixed viewport height.
-    // If the answers need more space,
-    // this container becomes vertically scrollable.
     lv_obj_set_height(
         optionsContainer,
         LV_SIZE_CONTENT
@@ -1039,13 +1283,18 @@ void QuizScreen::createMultipleChoiceInput(
 
 
     // =================================================
-    // ENABLE VERTICAL SCROLL
+    // OPTIONS DO NOT SCROLL SEPARATELY
     // =================================================
+    //
+    // Question and options belong to the same card.
+    // We do not want a second independent scroll area.
+    //
 
     lv_obj_set_scrollbar_mode(
         optionsContainer,
         LV_SCROLLBAR_MODE_OFF
     );
+
 
     lv_obj_remove_flag(
         optionsContainer,
@@ -1058,6 +1307,7 @@ void QuizScreen::createMultipleChoiceInput(
     // =================================================
 
     const char* letters[] = {
+
         "A",
         "B",
         "C",
@@ -1069,7 +1319,11 @@ void QuizScreen::createMultipleChoiceInput(
     // CREATE ANSWER BUTTONS
     // =================================================
 
-    for (int i = 0; i < 4; i++) {
+    for (
+        int i = 0;
+        i < 4;
+        i++
+    ) {
 
         if (
             i >=
@@ -1097,23 +1351,19 @@ void QuizScreen::createMultipleChoiceInput(
         );
 
 
-        // IMPORTANT:
-        //
-        // Do NOT use a fixed 42px height.
-        // The button now grows depending
-        // on how many lines the answer needs.
+        // Dynamic height so long answers can wrap.
         lv_obj_set_height(
             button,
             LV_SIZE_CONTENT
         );
 
 
-        // Give wrapped text enough vertical space.
         lv_obj_set_style_pad_top(
             button,
             10,
             0
         );
+
 
         lv_obj_set_style_pad_bottom(
             button,
@@ -1121,11 +1371,13 @@ void QuizScreen::createMultipleChoiceInput(
             0
         );
 
+
         lv_obj_set_style_pad_left(
             button,
             10,
             0
         );
+
 
         lv_obj_set_style_pad_right(
             button,
@@ -1163,16 +1415,12 @@ void QuizScreen::createMultipleChoiceInput(
         );
 
 
-        // Almost entire button width.
-        // This gives LVGL a known width at which
-        // it can wrap the text.
         lv_obj_set_width(
             label,
             LV_PCT(95)
         );
 
 
-        // Long answers continue on another line.
         lv_label_set_long_mode(
             label,
             LV_LABEL_LONG_WRAP
@@ -1191,8 +1439,6 @@ void QuizScreen::createMultipleChoiceInput(
         );
 
 
-        // Center the entire wrapped label
-        // vertically/horizontally inside the button.
         lv_obj_center(
             label
         );
@@ -1208,7 +1454,9 @@ void QuizScreen::createMultipleChoiceInput(
             LV_EVENT_CLICKED,
 
             reinterpret_cast<void*>(
-                static_cast<intptr_t>(i)
+                static_cast<intptr_t>(
+                    i
+                )
             )
         );
     }
@@ -1223,20 +1471,34 @@ void QuizScreen::create(
     GameManager& game
 )
 {
-    currentGame = &game;
+    currentGame =
+        &game;
 
-    answerLabel = nullptr;
-    popupOverlay = nullptr;
-    popupTimer = nullptr;
-    cancelOverlay = nullptr;
+    answerLabel =
+        nullptr;
+
+    popupOverlay =
+        nullptr;
+
+    popupTimer =
+        nullptr;
+
+    cancelOverlay =
+        nullptr;
 
 
     lv_obj_t* screen =
         lv_screen_active();
 
-    lv_obj_clean(screen);
 
-    Theme::applyScreen(screen);
+    lv_obj_clean(
+        screen
+    );
+
+
+    Theme::applyScreen(
+        screen
+    );
 
 
     Quiz quiz =
@@ -1245,10 +1507,24 @@ void QuizScreen::create(
 
     // =================================================
     // MAIN CONTENT
-    // =====================================================
+    // =================================================
+    //
+    // Screen structure:
+    //
+    //   HEADER
+    //      LEAVE
+    //      QUIZ TIME!
+    //
+    //   QUIZ AREA
+    //      centered quiz card
+    //
+    // =================================================
 
     lv_obj_t* content =
-        lv_obj_create(screen);
+        lv_obj_create(
+            screen
+        );
+
 
     lv_obj_set_size(
         content,
@@ -1256,11 +1532,13 @@ void QuizScreen::create(
         LV_PCT(100)
     );
 
+
     lv_obj_set_style_bg_opa(
         content,
         LV_OPA_TRANSP,
         0
     );
+
 
     lv_obj_set_style_border_width(
         content,
@@ -1268,26 +1546,29 @@ void QuizScreen::create(
         0
     );
 
+
     lv_obj_set_style_pad_all(
         content,
         Theme::SPACING_SM,
         0
     );
 
+
     lv_obj_set_style_pad_row(
         content,
-        Theme::SPACING_SM,
+        0,
         0
     );
+
 
     lv_obj_set_flex_flow(
         content,
         LV_FLEX_FLOW_COLUMN
     );
 
+
     lv_obj_set_flex_align(
         content,
-
         LV_FLEX_ALIGN_START,
         LV_FLEX_ALIGN_CENTER,
         LV_FLEX_ALIGN_CENTER
@@ -1296,20 +1577,35 @@ void QuizScreen::create(
 
     // =================================================
     // HEADER
-    // =====================================================
+    // =================================================
+    //
+    //  ┌──────────────────────────────────┐
+    //  │ [ LEAVE ]                        │
+    //  │                                  │
+    //  │           QUIZ TIME!             │
+    //  └──────────────────────────────────┘
+    //
+    // LEAVE and QUIZ TIME belong to the same header.
+    //
+    // =================================================
 
     lv_obj_t* header =
-        lv_obj_create(content);
+        lv_obj_create(
+            content
+        );
+
 
     lv_obj_set_width(
         header,
         LV_PCT(100)
     );
 
+
     lv_obj_set_height(
         header,
-        48
+        125
     );
+
 
     lv_obj_set_style_bg_opa(
         header,
@@ -1317,11 +1613,13 @@ void QuizScreen::create(
         0
     );
 
+
     lv_obj_set_style_border_width(
         header,
         0,
         0
     );
+
 
     lv_obj_set_style_pad_all(
         header,
@@ -1329,67 +1627,65 @@ void QuizScreen::create(
         0
     );
 
-    lv_obj_set_flex_flow(
-        header,
-        LV_FLEX_FLOW_ROW
-    );
 
-    lv_obj_set_flex_align(
-        header,
-
-        LV_FLEX_ALIGN_SPACE_BETWEEN,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER
-    );
+    // Important:
+    // Header is NOT a flex row anymore.
+    //
+    // This lets us position LEAVE and QUIZ TIME
+    // independently inside the same header.
 
 
     // =================================================
-    // TITLE
-    // =====================================================
-
-    lv_obj_t* title =
-        lv_label_create(header);
-
-    lv_label_set_text(
-        title,
-        "QUIZ TIME!"
-    );
-
-    Theme::applyTitle(
-        title
-    );
-
-
+    // LEAVE BUTTON
     // =================================================
-    // CANCEL IN HEADER
-    // =====================================================
 
     lv_obj_t* cancel =
-        lv_button_create(header);
+        lv_button_create(
+            header
+        );
+
 
     lv_obj_set_size(
         cancel,
-        85,
-        34
+        110,
+        50
     );
+
+
+    lv_obj_align(
+        cancel,
+        LV_ALIGN_TOP_LEFT,
+        0,
+        0
+    );
+
 
     Theme::applySecondaryButton(
         cancel
     );
 
+
     lv_obj_t* cancelLabel =
-        lv_label_create(cancel);
+        lv_label_create(
+            cancel
+        );
+
 
     lv_label_set_text(
         cancelLabel,
         "LEAVE"
     );
 
+
     Theme::applyButtonText(
         cancelLabel
     );
 
-    lv_obj_center(cancelLabel);
+
+    lv_obj_center(
+        cancelLabel
+    );
+
 
     lv_obj_add_event_cb(
         cancel,
@@ -1400,79 +1696,226 @@ void QuizScreen::create(
 
 
     // =================================================
-    // QUESTION AREA
-    // =====================================================
+    // TITLE
+    // =================================================
+    //
+    // QUIZ TIME is below LEAVE but centered relative
+    // to the whole header/screen.
+    //
+    // =================================================
 
-    lv_obj_t* questionArea =
-        lv_obj_create(content);
+    lv_obj_t* title =
+        lv_label_create(
+            header
+        );
 
-    lv_obj_set_width(
-        questionArea,
-        LV_PCT(95)
+
+    lv_label_set_text(
+        title,
+        "QUIZ TIME!"
     );
 
-    lv_obj_set_height(
-        questionArea,
-        70
+
+    Theme::applyTitle(
+        title
     );
 
-    lv_obj_set_style_bg_opa(
-        questionArea,
-        LV_OPA_TRANSP,
-        0
-    );
 
-    lv_obj_set_style_border_width(
-        questionArea,
+    lv_obj_align(
+        title,
+        LV_ALIGN_BOTTOM_MID,
         0,
-        0
-    );
-
-    lv_obj_set_style_pad_all(
-        questionArea,
-        Theme::SPACING_XS,
-        0
-    );
-
-    lv_obj_add_flag(
-        questionArea,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-    lv_obj_set_scroll_dir(
-        questionArea,
-        LV_DIR_VER
-    );
-
-    lv_obj_set_scrollbar_mode(
-        questionArea,
-        LV_SCROLLBAR_MODE_AUTO
+        -10
     );
 
 
     // =================================================
-    // QUESTION TEXT
-    // =====================================================
+    // QUIZ AREA
+    // =================================================
+    //
+    // Takes ALL remaining vertical space.
+    //
+    // The quiz card itself keeps LV_SIZE_CONTENT.
+    // Instead of stretching the card, this container
+    // centers it vertically and horizontally.
+    //
+    // =================================================
+
+    lv_obj_t* quizArea =
+        lv_obj_create(
+            content
+        );
+
+
+    lv_obj_set_width(
+        quizArea,
+        LV_PCT(100)
+    );
+
+
+    lv_obj_set_flex_grow(
+        quizArea,
+        1
+    );
+
+
+    lv_obj_set_style_bg_opa(
+        quizArea,
+        LV_OPA_TRANSP,
+        0
+    );
+
+
+    lv_obj_set_style_border_width(
+        quizArea,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_pad_all(
+        quizArea,
+        0,
+        0
+    );
+
+
+    lv_obj_set_scrollbar_mode(
+        quizArea,
+        LV_SCROLLBAR_MODE_OFF
+    );
+
+
+    lv_obj_remove_flag(
+        quizArea,
+        LV_OBJ_FLAG_SCROLLABLE
+    );
+
+
+    lv_obj_set_flex_flow(
+        quizArea,
+        LV_FLEX_FLOW_COLUMN
+    );
+
+
+    lv_obj_set_flex_align(
+        quizArea,
+
+        // Vertical centering
+        LV_FLEX_ALIGN_CENTER,
+
+        // Horizontal centering
+        LV_FLEX_ALIGN_CENTER,
+
+        LV_FLEX_ALIGN_CENTER
+    );
+
+
+    // =================================================
+    // QUIZ CARD
+    // =================================================
+    //
+    // Question + answers remain in one card.
+    //
+    // IMPORTANT:
+    // The card is NOT stretched vertically.
+    // Its height depends entirely on its content.
+    //
+    // quizArea is responsible for centering it.
+    //
+    // =================================================
+
+    lv_obj_t* quizCard =
+        lv_obj_create(
+            quizArea
+        );
+
+
+    lv_obj_set_width(
+        quizCard,
+        LV_PCT(95)
+    );
+
+
+    lv_obj_set_height(
+        quizCard,
+        LV_SIZE_CONTENT
+    );
+
+
+    Theme::applyPanel(
+        quizCard
+    );
+
+
+    lv_obj_set_style_pad_all(
+        quizCard,
+        Theme::SPACING_MD,
+        0
+    );
+
+
+    lv_obj_set_style_pad_row(
+        quizCard,
+        Theme::SPACING_MD,
+        0
+    );
+
+
+    lv_obj_set_flex_flow(
+        quizCard,
+        LV_FLEX_FLOW_COLUMN
+    );
+
+
+    lv_obj_set_flex_align(
+        quizCard,
+
+        LV_FLEX_ALIGN_START,
+        LV_FLEX_ALIGN_CENTER,
+        LV_FLEX_ALIGN_CENTER
+    );
+
+
+    lv_obj_set_scrollbar_mode(
+        quizCard,
+        LV_SCROLLBAR_MODE_OFF
+    );
+
+
+    lv_obj_remove_flag(
+        quizCard,
+        LV_OBJ_FLAG_SCROLLABLE
+    );
+
+
+    // =================================================
+    // QUESTION
+    // =================================================
 
     lv_obj_t* question =
         lv_label_create(
-            questionArea
+            quizCard
         );
+
 
     lv_label_set_text(
         question,
         quiz.question.c_str()
     );
 
+
     lv_obj_set_width(
         question,
-        LV_PCT(100)
+        LV_PCT(95)
     );
+
 
     lv_label_set_long_mode(
         question,
         LV_LABEL_LONG_WRAP
     );
+
 
     lv_obj_set_style_text_align(
         question,
@@ -1480,14 +1923,15 @@ void QuizScreen::create(
         0
     );
 
+
     Theme::applyNormalText(
         question
     );
 
 
     // =================================================
-    // INPUT TYPE
-    // =====================================================
+    // INPUT
+    // =================================================
 
     if (
         quiz.type
@@ -1495,7 +1939,7 @@ void QuizScreen::create(
     ) {
 
         createNumericInput(
-            content
+            quizCard
         );
     }
 
@@ -1505,7 +1949,7 @@ void QuizScreen::create(
     ) {
 
         createMultipleChoiceInput(
-            content,
+            quizCard,
             quiz
         );
     }

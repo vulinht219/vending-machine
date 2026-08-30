@@ -1,17 +1,23 @@
 #pragma once
 
-enum class SpecialEventType {
+
+enum class SpecialEventType
+{
     NONE,
 
-    MONTHLY_25,
+    MONTHIVERSARY,
 
     NEW_YEAR,
 
     VALENTINE,
 
-    SEPTEMBER_21,
+    BIRTHDAY_SEPTEMBER,
 
-    OCTOBER_02,
+    BIRTHDAY_OCTOBER,
 
-    CHRISTMAS
+    HALLOWEEN,
+
+    CHRISTMAS,
+
+    NEW_YEARS_EVE
 };

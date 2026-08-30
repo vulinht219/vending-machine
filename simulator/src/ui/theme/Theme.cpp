@@ -1,5 +1,7 @@
 #include "Theme.h"
 
+LV_FONT_DECLARE(quiz_symbols_18);
+
 // =========================================
 // COLORS
 // =========================================
@@ -11,6 +13,35 @@ static const uint32_t COLOR_SECONDARY = 0x514B6B;
 static const uint32_t COLOR_KEYPAD = 0x332E49;
 static const uint32_t COLOR_TEXT = 0xFFFFFF;
 static const uint32_t COLOR_BORDER = 0x81789E;
+
+
+// =========================================
+// FONT
+// =========================================
+
+static const lv_font_t* getQuizTextFont()
+{
+    static lv_font_t quizTextFont;
+    static bool initialized = false;
+
+    if (!initialized) {
+        quizTextFont = *LV_FONT_DEFAULT;
+
+        // Normal characters:
+        //   LV_FONT_DEFAULT
+        //
+        // Missing quiz symbols:
+        //   € £ ° × ÷
+        //       ↓
+        //   quiz_symbols_18
+
+        quizTextFont.fallback = &quiz_symbols_18;
+
+        initialized = true;
+    }
+
+    return &quizTextFont;
+}
 
 
 // =========================================
@@ -44,6 +75,12 @@ void Theme::applyTitle(lv_obj_t* label)
         lv_color_hex(COLOR_TEXT),
         0
     );
+
+    lv_obj_set_style_text_font(
+        label,
+        getQuizTextFont(),
+        0
+    );
 }
 
 
@@ -58,6 +95,12 @@ void Theme::applyNormalText(lv_obj_t* label)
         lv_color_hex(COLOR_TEXT),
         0
     );
+
+    lv_obj_set_style_text_font(
+        label,
+        getQuizTextFont(),
+        0
+    );
 }
 
 
@@ -70,6 +113,12 @@ void Theme::applyButtonText(lv_obj_t* label)
     lv_obj_set_style_text_color(
         label,
         lv_color_hex(COLOR_TEXT),
+        0
+    );
+
+    lv_obj_set_style_text_font(
+        label,
+        getQuizTextFont(),
         0
     );
 }

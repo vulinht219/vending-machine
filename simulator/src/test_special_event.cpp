@@ -61,8 +61,8 @@ int main()
             SpecialEventCalendar::getEvent(
                 {2026, 9, 21}
             )
-            == SpecialEventType::SEPTEMBER_21,
-            "21/09 should be special."
+            == SpecialEventType::BIRTHDAY_SEPTEMBER,
+            "21/09 should be BIRTHDAY_SEPTEMBER."
         );
 
 
@@ -70,8 +70,17 @@ int main()
             SpecialEventCalendar::getEvent(
                 {2026, 10, 2}
             )
-            == SpecialEventType::OCTOBER_02,
-            "02/10 should be special."
+            == SpecialEventType::BIRTHDAY_OCTOBER,
+            "02/10 should be BIRTHDAY_OCTOBER."
+        );
+
+
+        require(
+            SpecialEventCalendar::getEvent(
+                {2026, 10, 31}
+            )
+            == SpecialEventType::HALLOWEEN,
+            "31/10 should be HALLOWEEN."
         );
 
 
@@ -89,7 +98,7 @@ int main()
                 {2026, 12, 25}
             )
             == SpecialEventType::CHRISTMAS,
-            "25/12 should prefer CHRISTMAS over MONTHLY_25."
+            "25/12 should prefer CHRISTMAS over MONTHIVERSARY."
         );
 
 
@@ -104,10 +113,19 @@ int main()
 
         require(
             SpecialEventCalendar::getEvent(
+                {2026, 12, 31}
+            )
+            == SpecialEventType::NEW_YEARS_EVE,
+            "31/12 should be NEW_YEARS_EVE."
+        );
+
+
+        require(
+            SpecialEventCalendar::getEvent(
                 {2026, 8, 25}
             )
-            == SpecialEventType::MONTHLY_25,
-            "25/08 should be MONTHLY_25."
+            == SpecialEventType::MONTHIVERSARY,
+            "25/08 should be MONTHIVERSARY."
         );
 
 
@@ -307,14 +325,14 @@ int main()
 
         require(
             monthlyEventManager.shouldShowEvent(),
-            "25/01 should be MONTHLY_25."
+            "25/01 should be MONTHIVERSARY."
         );
 
 
         require(
             monthlyEventManager.getTodayEvent()
-            == SpecialEventType::MONTHLY_25,
-            "25/01 should use MONTHLY_25 event."
+            == SpecialEventType::MONTHIVERSARY,
+            "25/01 should use MONTHIVERSARY event."
         );
 
 

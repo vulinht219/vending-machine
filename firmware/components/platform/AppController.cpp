@@ -5,6 +5,8 @@
 #include "nvs_flash.h"
 
 #include "SDCardManager.h"
+#include "DisplayManager.h"
+#include "TouchManager.h"
 
 #include <exception>
 
@@ -67,8 +69,102 @@ void AppController::start()
 
 
     // =================================================
+    // TEMPORARY LCD HARDWARE SELF TEST
+    // =================================================
+
+    if (
+        !DisplayManager::initialize()
+    ) {
+        ESP_LOGE(
+            TAG,
+            "LCD initialization failed."
+        );
+
+        return;
+    }
+
+
+    if (
+        !DisplayManager::runSelfTest()
+    ) {
+        ESP_LOGE(
+            TAG,
+            "LCD self-test failed."
+        );
+
+        return;
+    }
+
+
+    if (
+        !DisplayManager::setBacklight(
+            true
+        )
+    ) {
+        ESP_LOGE(
+            TAG,
+            "LCD backlight enable failed."
+        );
+
+        return;
+    }
+
+
+    // =================================================
+    // TEMPORARY GT911 TOUCH SELF TEST
+    // =================================================
+
+    if (
+        !TouchManager::initialize()
+    ) {
+        ESP_LOGE(
+            TAG,
+            "GT911 initialization failed."
+        );
+
+        return;
+    }
+
+
+    ESP_LOGI(
+        TAG,
+        "LCD + GT911 initialized successfully."
+    );
+
+
+    // =================================================
+    // TEMPORARY BLOCKING TOUCH TEST
+    // =================================================
+    //
+    // This intentionally blocks here.
+    //
+    // While testing hardware:
+    //
+    // - LCD should show RGB test bars
+    // - touching the display should print:
+    //
+    //   TOUCH x=123 y=456
+    //
+    // Remove this call after hardware validation.
+    //
+
+    TouchManager::runSelfTest();
+
+
+    // =================================================
     // SD CARD
     // =================================================
+    //
+    // NOTE:
+    //
+    // During the temporary touch self-test above,
+    // execution will NOT reach this section because
+    // runSelfTest() contains a blocking loop.
+    //
+    // This code remains here so we can simply remove
+    // the self-test call later without rebuilding the
+    // production startup architecture.
+    //
 
     if (
         !SDCardManager::mount()

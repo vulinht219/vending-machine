@@ -4,8 +4,55 @@
 
 #include "theme/Theme.h"
 
+#include "event/SpecialEventType.h"
+
 #include <cstdint>
 #include <string>
+
+
+namespace {
+
+// =====================================================
+// SPECIAL EVENT TITLE
+// =====================================================
+
+const char* getSpecialEventTitle(
+    SpecialEventType eventType
+)
+{
+    switch (eventType)
+    {
+        case SpecialEventType::MONTHIVERSARY:
+            return "Happy monthiversaryy";
+
+        case SpecialEventType::HALLOWEEN:
+            return "Trick or treat!";
+
+        case SpecialEventType::CHRISTMAS:
+            return "Merry Christmas";
+
+        case SpecialEventType::NEW_YEARS_EVE:
+            return "One last sweet this year?";
+
+        case SpecialEventType::NEW_YEAR:
+            return "happy new yearr";
+
+        case SpecialEventType::VALENTINE:
+            return "Happy Valentine";
+
+        case SpecialEventType::BIRTHDAY_SEPTEMBER:
+            return "It's my birthday, have a sweet";
+
+        case SpecialEventType::BIRTHDAY_OCTOBER:
+            return "Happy birthdayy";
+
+        case SpecialEventType::NONE:
+        default:
+            return "Special Day!";
+    }
+}
+
+} // namespace
 
 
 // =====================================================
@@ -94,7 +141,8 @@ void SpecialEventScreen::candyButtonEvent(
 
 void SpecialEventScreen::create(
     SpecialEventManager& specialEventManager,
-    GameManager& game
+    GameManager& game,
+    SpecialEventType eventType
 )
 {
     currentSpecialEventManager =
@@ -120,7 +168,7 @@ void SpecialEventScreen::create(
 
 
     // =================================================
-    // CONTENT
+    // MAIN CONTENT
     // =================================================
 
     lv_obj_t* content =
@@ -152,27 +200,142 @@ void SpecialEventScreen::create(
 
     lv_obj_set_style_pad_all(
         content,
-        Theme::SPACING_MD,
+        Theme::SPACING_LG,
         0
     );
 
 
-    lv_obj_set_style_pad_row(
-        content,
-        Theme::SPACING_MD,
+    // =================================================
+    // CENTER AREA
+    // =================================================
+    //
+    // Fills the whole screen.
+    // The complete special-event block is centered here.
+    //
+    // =================================================
+
+    lv_obj_t* centerArea =
+        lv_obj_create(
+            content
+        );
+
+
+    lv_obj_set_size(
+        centerArea,
+        LV_PCT(100),
+        LV_PCT(100)
+    );
+
+
+    lv_obj_set_style_bg_opa(
+        centerArea,
+        LV_OPA_TRANSP,
         0
+    );
+
+
+    lv_obj_set_style_border_width(
+        centerArea,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_pad_all(
+        centerArea,
+        0,
+        0
+    );
+
+
+    lv_obj_set_scrollbar_mode(
+        centerArea,
+        LV_SCROLLBAR_MODE_OFF
+    );
+
+
+    lv_obj_remove_flag(
+        centerArea,
+        LV_OBJ_FLAG_SCROLLABLE
     );
 
 
     lv_obj_set_flex_flow(
-        content,
+        centerArea,
         LV_FLEX_FLOW_COLUMN
     );
 
 
     lv_obj_set_flex_align(
-        content,
+        centerArea,
+        LV_FLEX_ALIGN_CENTER,
+        LV_FLEX_ALIGN_CENTER,
+        LV_FLEX_ALIGN_CENTER
+    );
 
+
+    // =================================================
+    // SPECIAL EVENT CONTENT BLOCK
+    // =================================================
+    //
+    // Title + subtitle + grid are one centered block.
+    //
+    // =================================================
+
+    lv_obj_t* eventContent =
+        lv_obj_create(
+            centerArea
+        );
+
+
+    lv_obj_set_width(
+        eventContent,
+        LV_PCT(100)
+    );
+
+
+    lv_obj_set_height(
+        eventContent,
+        LV_SIZE_CONTENT
+    );
+
+
+    lv_obj_set_style_bg_opa(
+        eventContent,
+        LV_OPA_TRANSP,
+        0
+    );
+
+
+    lv_obj_set_style_border_width(
+        eventContent,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_pad_all(
+        eventContent,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_pad_row(
+        eventContent,
+        Theme::SPACING_LG,
+        0
+    );
+
+
+    lv_obj_set_flex_flow(
+        eventContent,
+        LV_FLEX_FLOW_COLUMN
+    );
+
+
+    lv_obj_set_flex_align(
+        eventContent,
         LV_FLEX_ALIGN_START,
         LV_FLEX_ALIGN_CENTER,
         LV_FLEX_ALIGN_CENTER
@@ -185,13 +348,34 @@ void SpecialEventScreen::create(
 
     lv_obj_t* title =
         lv_label_create(
-            content
+            eventContent
         );
 
 
     lv_label_set_text(
         title,
-        "SPECIAL DAY!"
+        getSpecialEventTitle(
+            eventType
+        )
+    );
+
+
+    lv_obj_set_width(
+        title,
+        LV_PCT(90)
+    );
+
+
+    lv_label_set_long_mode(
+        title,
+        LV_LABEL_LONG_WRAP
+    );
+
+
+    lv_obj_set_style_text_align(
+        title,
+        LV_TEXT_ALIGN_CENTER,
+        0
     );
 
 
@@ -206,13 +390,20 @@ void SpecialEventScreen::create(
 
     lv_obj_t* subtitle =
         lv_label_create(
-            content
+            eventContent
         );
 
 
     lv_label_set_text(
         subtitle,
         "Pick one free candy!"
+    );
+
+
+    lv_obj_set_style_text_align(
+        subtitle,
+        LV_TEXT_ALIGN_CENTER,
+        0
     );
 
 
@@ -227,7 +418,7 @@ void SpecialEventScreen::create(
 
     lv_obj_t* grid =
         lv_obj_create(
-            content
+            eventContent
         );
 
 
@@ -237,9 +428,11 @@ void SpecialEventScreen::create(
     );
 
 
+    // Bigger than the old 280 px so touch targets
+    // are more comfortable on 480x800 portrait.
     lv_obj_set_height(
         grid,
-        280
+        500
     );
 
 
@@ -255,8 +448,23 @@ void SpecialEventScreen::create(
     );
 
 
+    lv_obj_set_style_pad_row(
+        grid,
+        Theme::SPACING_MD,
+        0
+    );
+
+
+    lv_obj_set_style_pad_column(
+        grid,
+        Theme::SPACING_MD,
+        0
+    );
+
+
     static int32_t columns[] = {
 
+        LV_GRID_FR(1),
         LV_GRID_FR(1),
         LV_GRID_FR(1),
 
@@ -266,7 +474,6 @@ void SpecialEventScreen::create(
 
     static int32_t rows[] = {
 
-        LV_GRID_FR(1),
         LV_GRID_FR(1),
         LV_GRID_FR(1),
 
@@ -301,12 +508,12 @@ void SpecialEventScreen::create(
             i + 1;
 
 
-        int column =
-            i % 2;
-
-
         int row =
-            i / 2;
+            i / 3;
+
+
+        int column =
+            i % 3;
 
 
         lv_obj_t* button =
@@ -354,6 +561,13 @@ void SpecialEventScreen::create(
 
         Theme::applyButtonText(
             label
+        );
+
+
+        lv_obj_set_style_text_align(
+            label,
+            LV_TEXT_ALIGN_CENTER,
+            0
         );
 
 
