@@ -52,6 +52,7 @@ add_executable(candy-simulator
 
     src/ui/HomeScreen.cpp
     src/ui/QuizScreen.cpp
+    src/ui/screens/SpecialEventIntroScreen.cpp
     src/ui/CandySelectScreen.cpp
     src/ui/DispensingScreen.cpp
     src/ui/SpecialEventScreen.cpp
@@ -147,6 +148,7 @@ add_executable(
     ../core/src/quiz/FileQuizSource.cpp
     ../core/src/quiz/QuizLoader.cpp
     ../core/src/quiz/QuizValidator.cpp
+    
 )
 
 target_include_directories(

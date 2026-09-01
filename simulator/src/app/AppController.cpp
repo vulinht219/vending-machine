@@ -3,6 +3,7 @@
 #include "ui/HomeScreen.h"
 #include "ui/CandySelectScreen.h"
 #include "ui/SpecialEventScreen.h"
+#include "ui/screens/SpecialEventIntroScreen.h"
 
 
 AppController::AppController(
@@ -34,7 +35,7 @@ void AppController::start()
 
         case StartupRoute::SPECIAL_EVENT:
 
-            SpecialEventScreen::create(
+            SpecialEventIntroScreen::create(
                 specialEventManager,
                 game,
                 specialEventManager.getTodayEvent()

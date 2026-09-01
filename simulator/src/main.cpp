@@ -63,7 +63,7 @@ namespace {
 
 constexpr int DEBUG_YEAR  = 2026;
 constexpr int DEBUG_MONTH = 12;
-constexpr int DEBUG_DAY   = 24;
+constexpr int DEBUG_DAY   = 25;
 
 }
 

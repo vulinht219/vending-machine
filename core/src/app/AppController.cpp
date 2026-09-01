@@ -3,6 +3,7 @@
 #include "ui/HomeScreen.h"
 #include "ui/CandySelectScreen.h"
 #include "ui/SpecialEventScreen.h"
+#include "ui/screens/SpecialEventIntroScreen.h"
 #include "DisplayManager.h"
 
 
