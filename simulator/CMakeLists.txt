@@ -59,6 +59,28 @@ add_executable(candy-simulator
     src/platform/FileSpecialEventProgressStore.cpp
     src/app/AppController.cpp
     src/ui/fonts/quiz_symbols_18.c
+    assets/result/correct_title.c
+    assets/result/incorrect_title.c
+
+
+    assets/home/home_1.c
+    assets/home/home_2.c
+    assets/home/home_3.c
+    assets/home/home_button.c
+    assets/home/home_title.c
+
+    assets/quiz/quiz_back_button.c
+    assets/quiz/quiz_popup.c
+
+    assets/result/correct_1.c
+    assets/result/correct_2.c
+    assets/result/correct_3.c
+    assets/result/correct_title.c
+
+    assets/result/incorrect_1.c
+    assets/result/incorrect_2.c
+    assets/result/incorrect_3.c
+    assets/result/incorrect_title.c
 
     src/ui/theme/Theme.cpp
 

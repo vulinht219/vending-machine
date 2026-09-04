@@ -3,6 +3,64 @@
 #include "theme/Theme.h"
 
 
+LV_IMAGE_DECLARE(home_1);
+LV_IMAGE_DECLARE(home_2);
+LV_IMAGE_DECLARE(home_3);
+LV_IMAGE_DECLARE(home_title);
+LV_IMAGE_DECLARE(home_button);
+
+
+namespace {
+
+lv_timer_t* homeAnimationTimer = nullptr;
+
+int currentHomeFrame = 0;
+
+
+const lv_image_dsc_t* homeFrames[] = {
+    &home_1,
+    &home_2,
+    &home_3
+};
+
+
+void updateHomeAnimation(
+    lv_timer_t* timer
+)
+{
+    lv_obj_t* background =
+        static_cast<lv_obj_t*>(
+            lv_timer_get_user_data(
+                timer
+            )
+        );
+
+
+    if (
+        background == nullptr
+    ) {
+        return;
+    }
+
+
+    currentHomeFrame =
+        (
+            currentHomeFrame + 1
+        )
+        % 3;
+
+
+    lv_image_set_src(
+        background,
+        homeFrames[
+            currentHomeFrame
+        ]
+    );
+}
+
+}
+
+
 void HomeScreen::startButtonEvent(
     lv_event_t* event
 )
@@ -12,6 +70,20 @@ void HomeScreen::startButtonEvent(
         != LV_EVENT_CLICKED
     ) {
         return;
+    }
+
+
+    if (
+        homeAnimationTimer
+        != nullptr
+    ) {
+
+        lv_timer_delete(
+            homeAnimationTimer
+        );
+
+        homeAnimationTimer =
+            nullptr;
     }
 
 
@@ -50,67 +122,115 @@ void HomeScreen::create(
     );
 
 
-    // =================================================
-    // TITLE
-    // =================================================
+    currentHomeFrame =
+        0;
 
-    lv_obj_t* title =
-        lv_label_create(
+
+    // =====================================================
+    // BACKGROUND
+    // =====================================================
+
+    lv_obj_t* background =
+        lv_image_create(
             screen
         );
 
 
-    lv_label_set_text(
-        title,
-        "CANDY QUEST"
+    lv_image_set_src(
+        background,
+        &home_1
     );
 
 
-    Theme::applyTitle(
-        title
-    );
-
-
-    lv_obj_set_width(
-        title,
-        LV_PCT(90)
-    );
-
-
-    lv_obj_set_style_text_align(
-        title,
-        LV_TEXT_ALIGN_CENTER,
+    lv_obj_align(
+        background,
+        LV_ALIGN_CENTER,
+        0,
         0
     );
 
 
-    lv_obj_align(
-        title,
-        LV_ALIGN_CENTER,
-        0,
-        -180
+    lv_obj_clear_flag(
+        background,
+        LV_OBJ_FLAG_CLICKABLE
     );
 
 
-    // =================================================
-    // START BUTTON
-    // =================================================
+    // =====================================================
+    // BACKGROUND ANIMATION
+    // =====================================================
 
-    lv_obj_t* button =
-        lv_button_create(
+    if (
+        homeAnimationTimer
+        != nullptr
+    ) {
+
+        lv_timer_delete(
+            homeAnimationTimer
+        );
+
+        homeAnimationTimer =
+            nullptr;
+    }
+
+
+    homeAnimationTimer =
+        lv_timer_create(
+            updateHomeAnimation,
+            400,
+            background
+        );
+
+
+    // =====================================================
+    // TITLE
+    // =====================================================
+
+    lv_obj_t* title =
+        lv_image_create(
             screen
         );
 
 
-    Theme::applyPrimaryButton(
-        button
+    lv_image_set_src(
+        title,
+        &home_title
     );
 
 
-    lv_obj_set_size(
+    lv_obj_align(
+        title,
+        LV_ALIGN_TOP_MID,
+        0,
+        90
+    );
+
+
+    lv_obj_clear_flag(
+        title,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    // =====================================================
+    // START BUTTON
+    // =====================================================
+
+    lv_obj_t* button =
+        lv_image_create(
+            screen
+        );
+
+
+    lv_image_set_src(
         button,
-        220,
-        80
+        &home_button
+    );
+
+
+    lv_obj_add_flag(
+        button,
+        LV_OBJ_FLAG_CLICKABLE
     );
 
 
@@ -118,35 +238,9 @@ void HomeScreen::create(
         button,
         LV_ALIGN_CENTER,
         0,
-        80
+        180
     );
 
-
-    lv_obj_t* label =
-        lv_label_create(
-            button
-        );
-
-
-    lv_label_set_text(
-        label,
-        "START"
-    );
-
-
-    Theme::applyButtonText(
-        label
-    );
-
-
-    lv_obj_center(
-        label
-    );
-
-
-    // =================================================
-    // CLICK EVENT
-    // =================================================
 
     lv_obj_add_event_cb(
         button,
