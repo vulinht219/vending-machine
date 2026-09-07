@@ -24,6 +24,7 @@ namespace {
 constexpr const char* TAG =
     "AppController";
 
+
 constexpr const char* QUIZ_FILE_PATH =
     "/sdcard/quizzes.jsonl";
 
@@ -33,6 +34,7 @@ void initializeNVS()
     esp_err_t err =
         nvs_flash_init();
 
+
     if (
         err == ESP_ERR_NVS_NO_FREE_PAGES ||
         err == ESP_ERR_NVS_NEW_VERSION_FOUND
@@ -41,21 +43,31 @@ void initializeNVS()
             nvs_flash_erase()
         );
 
+
         err =
             nvs_flash_init();
     }
 
-    ESP_ERROR_CHECK(err);
+
+    ESP_ERROR_CHECK(
+        err
+    );
 }
 
 } // namespace
 
 
 AppController::AppController()
-    : state(AppState::BOOTING)
+    : state(
+        AppState::BOOTING
+    )
 {
 }
 
+
+// =====================================================
+// START
+// =====================================================
 
 void AppController::start()
 {
@@ -88,6 +100,7 @@ void AppController::start()
             "LCD initialization failed."
         );
 
+
         return;
     }
 
@@ -102,12 +115,13 @@ void AppController::start()
             "LCD backlight enable failed."
         );
 
+
         return;
     }
 
 
     // =================================================
-    // GT911 TOUCH
+    // TOUCH
     // =================================================
 
     if (
@@ -117,6 +131,7 @@ void AppController::start()
             TAG,
             "GT911 initialization failed."
         );
+
 
         return;
     }
@@ -140,6 +155,7 @@ void AppController::start()
             "LVGL initialization failed."
         );
 
+
         return;
     }
 
@@ -151,25 +167,135 @@ void AppController::start()
 
 
     // =================================================
-    // HOME SCREEN
+    // SD CARD
     // =================================================
 
-    HomeScreen::create();
+    ESP_LOGI(
+        TAG,
+        "Mounting SD card..."
+    );
+
+
+    if (
+        !SDCardManager::mount()
+    ) {
+        state =
+            AppState::SD_ERROR;
+
+
+        ESP_LOGE(
+            TAG,
+            "SD card initialization failed."
+        );
+
+
+        return;
+    }
 
 
     ESP_LOGI(
         TAG,
-        "Real Home screen started."
+        "SD card mounted successfully."
     );
 
 
     // =================================================
-    // TEMPORARY LVGL LOOP
+    // DATASET + GAME
     // =================================================
-    //
-    // For now we keep the LVGL loop here while testing
-    // the real Home screen on hardware.
-    //
+
+    try {
+
+        quizSource =
+            std::make_unique<
+                SDCardQuizSource
+            >(
+                QUIZ_FILE_PATH
+            );
+
+
+        if (
+            quizSource->size() == 0
+        ) {
+            state =
+                AppState::DATASET_ERROR;
+
+
+            ESP_LOGE(
+                TAG,
+                "Quiz dataset is empty."
+            );
+
+
+            return;
+        }
+
+
+        ESP_LOGI(
+            TAG,
+            "Quiz count: %u",
+            static_cast<unsigned>(
+                quizSource->size()
+            )
+        );
+
+
+        game =
+            std::make_unique<
+                GameManager
+            >(
+                dispenser,
+                *quizSource,
+                quizProgressStore,
+                gameProgressStore
+            );
+
+
+        state =
+            AppState::READY;
+
+
+        ESP_LOGI(
+            TAG,
+            "Application READY."
+        );
+    }
+
+    catch (
+        const std::exception& exception
+    ) {
+        ESP_LOGE(
+            TAG,
+            "Dataset initialization failed: %s",
+            exception.what()
+        );
+
+
+        state =
+            AppState::DATASET_ERROR;
+
+
+        return;
+    }
+
+
+    // =================================================
+    // REAL HOME SCREEN
+    // =================================================
+
+    HomeScreen::create(
+        *game
+    );
+
+
+    ESP_LOGI(
+        TAG,
+        "Home screen started."
+    );
+
+
+    // =================================================
+    // LVGL MAIN LOOP
+    // =================================================
 
     while (true)
     {
@@ -199,116 +325,22 @@ void AppController::start()
             )
         );
     }
-
-
-    // =================================================
-    // SD CARD
-    // =================================================
-    //
-    // Not reached while the temporary LVGL loop above
-    // is active.
-    //
-
-    if (
-        !SDCardManager::mount()
-    ) {
-        state =
-            AppState::SD_ERROR;
-
-
-        ESP_LOGE(
-            TAG,
-            "SD card initialization failed."
-        );
-
-
-        return;
-    }
-
-
-    // =================================================
-    // DATASET
-    // =================================================
-
-    try {
-
-        quizSource =
-            std::make_unique<
-                SDCardQuizSource
-            >(
-                QUIZ_FILE_PATH
-            );
-
-
-        if (
-            quizSource->size() == 0
-        ) {
-            state =
-                AppState::DATASET_ERROR;
-
-
-            ESP_LOGE(
-                TAG,
-                "Dataset is empty."
-            );
-
-
-            return;
-        }
-
-
-        game =
-            std::make_unique<
-                GameManager
-            >(
-                dispenser,
-                *quizSource,
-                quizProgressStore,
-                gameProgressStore
-            );
-
-
-        state =
-            AppState::READY;
-
-
-        ESP_LOGI(
-            TAG,
-            "Application READY."
-        );
-
-
-        ESP_LOGI(
-            TAG,
-            "Quiz count: %u",
-            static_cast<unsigned>(
-                quizSource->size()
-            )
-        );
-    }
-
-    catch (
-        const std::exception& exception
-    ) {
-
-        ESP_LOGE(
-            TAG,
-            "Dataset initialization failed: %s",
-            exception.what()
-        );
-
-
-        state =
-            AppState::DATASET_ERROR;
-    }
 }
 
+
+// =====================================================
+// STATE
+// =====================================================
 
 AppState AppController::getState() const
 {
     return state;
 }
 
+
+// =====================================================
+// GAME
+// =====================================================
 
 GameManager* AppController::getGame()
 {

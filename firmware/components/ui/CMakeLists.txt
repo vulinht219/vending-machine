@@ -1,16 +1,21 @@
+file(
+    GLOB_RECURSE UI_SOURCES
+
+    "*.cpp"
+    "*.c"
+)
+
 idf_component_register(
     SRCS
-        "HomeScreen.cpp"
-
-        "assets/home/home_1.c"
-        "assets/home/home_2.c"
-        "assets/home/home_3.c"
-        "assets/home/home_title.c"
-        "assets/home/home_button.c"
+        ${UI_SOURCES}
 
     INCLUDE_DIRS
         "."
+        "screens"
+        "theme"
+        "fonts"
 
     REQUIRES
+        core
         lvgl__lvgl
 )

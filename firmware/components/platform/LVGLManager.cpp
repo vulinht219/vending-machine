@@ -28,17 +28,6 @@ constexpr const char* TAG =
     "LVGLManager";
 
 
-// =====================================================
-// DISPLAY DIMENSIONS
-// =====================================================
-//
-// LVGL/UI:
-//     480 x 800 portrait
-//
-// Physical Waveshare RGB LCD:
-//     800 x 480 landscape
-//
-
 constexpr int LOGICAL_WIDTH =
     480;
 
@@ -53,22 +42,8 @@ constexpr int PHYSICAL_HEIGHT =
 
 
 // =====================================================
-// FULL FRAME SIZE
+// FRAME SIZE
 // =====================================================
-//
-// RGB565:
-//
-// 480 * 800 * 2
-// = 768000 bytes
-//
-// We allocate:
-//
-// - one full LVGL portrait framebuffer
-// - one full rotated physical framebuffer
-//
-// Total:
-// ~1.5 MB PSRAM
-//
 
 constexpr size_t FRAME_PIXELS =
     static_cast<size_t>(
@@ -82,6 +57,21 @@ constexpr size_t FRAME_PIXELS =
 constexpr size_t FRAME_BYTES =
     FRAME_PIXELS *
     sizeof(uint16_t);
+
+
+// =====================================================
+// TILED ROTATION
+// =====================================================
+//
+// Process the frame in small blocks instead of writing
+// pixels across the entire PSRAM framebuffer with a very
+// large stride.
+//
+// 16x16 is a good first test size for cache locality.
+//
+
+constexpr int TILE_SIZE =
+    16;
 
 
 // =====================================================
@@ -107,6 +97,14 @@ uint16_t* rotatedBuffer =
 
 
 // =====================================================
+// PROFILER
+// =====================================================
+
+int64_t previousFlushEndUs =
+    0;
+
+
+// =====================================================
 // LVGL TICK
 // =====================================================
 
@@ -120,32 +118,96 @@ uint32_t getTickMilliseconds()
 
 
 // =====================================================
-// DISPLAY FLUSH
+// ROTATE TILE
 // =====================================================
 //
-// LVGL produces one complete:
-//     480 x 800
+// Logical:
 //
-// framebuffer.
-//
-// We rotate that complete frame once:
-//
-// logical:
 //     x = 0..479
 //     y = 0..799
 //
-// physical:
+// Physical:
+//
 //     X = 799 - y
 //     Y = x
 //
-// Then send ONE complete:
-//     800 x 480
+// Processing in tiles improves locality compared with
+// traversing the complete frame with strided PSRAM writes.
 //
-// framebuffer to the RGB LCD.
-//
-// This avoids dozens of partial flushes per animation
-// frame.
-//
+
+inline void rotateTile(
+    const uint16_t* source,
+    uint16_t* destination,
+    int tileX,
+    int tileY,
+    int tileWidth,
+    int tileHeight
+)
+{
+    for (
+        int localY = 0;
+        localY < tileHeight;
+        ++localY
+    ) {
+        const int sourceY =
+            tileY +
+            localY;
+
+
+        const size_t sourceRow =
+            static_cast<size_t>(
+                sourceY
+            ) *
+            LOGICAL_WIDTH;
+
+
+        const int physicalX =
+            PHYSICAL_WIDTH -
+            1 -
+            sourceY;
+
+
+        for (
+            int localX = 0;
+            localX < tileWidth;
+            ++localX
+        ) {
+            const int sourceX =
+                tileX +
+                localX;
+
+
+            const size_t sourceIndex =
+                sourceRow +
+                static_cast<size_t>(
+                    sourceX
+                );
+
+
+            const size_t destinationIndex =
+                static_cast<size_t>(
+                    sourceX
+                ) *
+                PHYSICAL_WIDTH +
+                static_cast<size_t>(
+                    physicalX
+                );
+
+
+            destination[
+                destinationIndex
+            ] =
+                source[
+                    sourceIndex
+                ];
+        }
+    }
+}
+
+
+// =====================================================
+// DISPLAY FLUSH
+// =====================================================
 
 void flushCallback(
     lv_display_t* lvDisplay,
@@ -153,6 +215,23 @@ void flushCallback(
     uint8_t* pixelMap
 )
 {
+    const int64_t flushStartUs =
+        esp_timer_get_time();
+
+
+    int64_t gapBeforeFlushUs =
+        0;
+
+
+    if (
+        previousFlushEndUs != 0
+    ) {
+        gapBeforeFlushUs =
+            flushStartUs -
+            previousFlushEndUs;
+    }
+
+
     esp_lcd_panel_handle_t panel =
         DisplayManager::getPanel();
 
@@ -171,6 +250,10 @@ void flushCallback(
         );
 
 
+        previousFlushEndUs =
+            esp_timer_get_time();
+
+
         return;
     }
 
@@ -180,14 +263,6 @@ void flushCallback(
             pixelMap
         );
 
-
-    // =================================================
-    // EXPECT FULL FRAME
-    // =================================================
-    //
-    // LV_DISPLAY_RENDER_MODE_FULL should normally give
-    // the complete logical display.
-    //
 
     const int width =
         area->x2 -
@@ -215,94 +290,86 @@ void flushCallback(
 
 
     // =================================================
-    // ROTATE COMPLETE FRAME 90 DEGREES CLOCKWISE
+    // ROTATION PROFILE START
     // =================================================
-    //
-    // Source index:
-    //
-    //     y * 480 + x
-    //
-    // Physical:
-    //
-    //     physicalX = 799 - y
-    //     physicalY = x
-    //
-    // Destination index:
-    //
-    //     physicalY * 800 + physicalX
-    //
+
+    const int64_t rotateStartUs =
+        esp_timer_get_time();
+
+
+    // =================================================
+    // TILED ROTATION
+    // =================================================
 
     for (
-        int y = 0;
-        y < LOGICAL_HEIGHT;
-        ++y
+        int tileY = 0;
+        tileY < LOGICAL_HEIGHT;
+        tileY += TILE_SIZE
     ) {
-        const size_t sourceRow =
-            static_cast<size_t>(
-                y
-            ) *
-            LOGICAL_WIDTH;
-
-
-        const int physicalX =
-            PHYSICAL_WIDTH -
-            1 -
-            y;
+        const int tileHeight =
+            (
+                tileY +
+                TILE_SIZE
+                <=
+                LOGICAL_HEIGHT
+            )
+            ?
+            TILE_SIZE
+            :
+            LOGICAL_HEIGHT -
+            tileY;
 
 
         for (
-            int x = 0;
-            x < LOGICAL_WIDTH;
-            ++x
+            int tileX = 0;
+            tileX < LOGICAL_WIDTH;
+            tileX += TILE_SIZE
         ) {
-            const size_t sourceIndex =
-                sourceRow +
-                static_cast<size_t>(
-                    x
-                );
+            const int tileWidth =
+                (
+                    tileX +
+                    TILE_SIZE
+                    <=
+                    LOGICAL_WIDTH
+                )
+                ?
+                TILE_SIZE
+                :
+                LOGICAL_WIDTH -
+                tileX;
 
 
-            const size_t destinationIndex =
-                static_cast<size_t>(
-                    x
-                ) *
-                PHYSICAL_WIDTH +
-                static_cast<size_t>(
-                    physicalX
-                );
-
-
-            rotatedBuffer[
-                destinationIndex
-            ] =
-                source[
-                    sourceIndex
-                ];
+            rotateTile(
+                source,
+                rotatedBuffer,
+                tileX,
+                tileY,
+                tileWidth,
+                tileHeight
+            );
         }
 
 
-        // -------------------------------------------------
-        // DO NOT STARVE FREERTOS
-        // -------------------------------------------------
+        // Let FreeRTOS schedule other work occasionally.
         //
-        // Rotating 384,000 pixels is CPU work.
-        //
-        // Yield periodically instead of sleeping after
-        // every small display strip like the previous
-        // partial-render implementation.
-        //
+        // With TILE_SIZE=16 this happens every logical
+        // tile-row rather than every pixel row.
 
-        if (
-            (y % 32) == 31
-        ) {
-            taskYIELD();
-        }
+        taskYIELD();
     }
 
 
+    const int64_t rotateEndUs =
+        esp_timer_get_time();
+
+
     // =================================================
-    // DRAW COMPLETE PHYSICAL FRAME
+    // DRAW PROFILE START
     // =================================================
+
+    const int64_t drawStartUs =
+        esp_timer_get_time();
+
 
     esp_err_t result =
         esp_lcd_panel_draw_bitmap(
@@ -313,6 +380,10 @@ void flushCallback(
             PHYSICAL_HEIGHT,
             rotatedBuffer
         );
+
+
+    const int64_t drawEndUs =
+        esp_timer_get_time();
 
 
     if (
@@ -333,6 +404,19 @@ void flushCallback(
     );
 
 
+    const int64_t flushEndUs =
+        esp_timer_get_time();
+
+
+    // =================================================
+    // PROFILE OUTPUT
+    // =================================================
+
+
+    previousFlushEndUs =
+        flushEndUs;
+
+
     taskYIELD();
 }
 
@@ -340,19 +424,6 @@ void flushCallback(
 // =====================================================
 // TOUCH READ
 // =====================================================
-//
-// GT911 physical coordinates:
-//
-//     rawX = 0..799
-//     rawY = 0..479
-//
-// Screen is mounted portrait.
-//
-// Convert to LVGL:
-//
-//     x = 0..479
-//     y = 0..799
-//
 
 void touchReadCallback(
     lv_indev_t*,
@@ -380,10 +451,6 @@ void touchReadCallback(
     }
 
 
-    // =================================================
-    // PHYSICAL -> PORTRAIT
-    // =================================================
-
     int logicalX =
         rawY;
 
@@ -393,10 +460,6 @@ void touchReadCallback(
         1 -
         rawX;
 
-
-    // =================================================
-    // CLAMP X
-    // =================================================
 
     if (
         logicalX < 0
@@ -414,10 +477,6 @@ void touchReadCallback(
             1;
     }
 
-
-    // =================================================
-    // CLAMP Y
-    // =================================================
 
     if (
         logicalY < 0
@@ -460,13 +519,9 @@ bool LVGLManager::initialize()
 {
     ESP_LOGI(
         TAG,
-        "Initializing LVGL full-frame renderer"
+        "Initializing LVGL tiled-rotation renderer"
     );
 
-
-    // =================================================
-    // REQUIRE DISPLAY
-    // =================================================
 
     if (
         !DisplayManager::isInitialized()
@@ -480,10 +535,6 @@ bool LVGLManager::initialize()
         return false;
     }
 
-
-    // =================================================
-    // REQUIRE TOUCH
-    // =================================================
 
     if (
         !TouchManager::isInitialized()
@@ -511,7 +562,7 @@ bool LVGLManager::initialize()
 
 
     // =================================================
-    // ALLOCATE FULL FRAME BUFFERS IN PSRAM
+    // FULL FRAME BUFFERS
     // =================================================
 
     drawBuffer =
@@ -540,7 +591,7 @@ bool LVGLManager::initialize()
     ) {
         ESP_LOGE(
             TAG,
-            "Failed to allocate full LVGL framebuffers"
+            "Failed to allocate LVGL framebuffers"
         );
 
 
@@ -576,7 +627,7 @@ bool LVGLManager::initialize()
 
     ESP_LOGI(
         TAG,
-        "Full LVGL framebuffer: %u bytes",
+        "Framebuffer size: %u bytes each",
         static_cast<unsigned>(
             FRAME_BYTES
         )
@@ -585,16 +636,14 @@ bool LVGLManager::initialize()
 
     ESP_LOGI(
         TAG,
-        "Total UI framebuffer PSRAM: %u bytes",
-        static_cast<unsigned>(
-            FRAME_BYTES *
-            2
-        )
+        "Rotation tile size: %dx%d",
+        TILE_SIZE,
+        TILE_SIZE
     );
 
 
     // =================================================
-    // CREATE LVGL DISPLAY
+    // DISPLAY
     // =================================================
 
     display =
@@ -622,10 +671,6 @@ bool LVGLManager::initialize()
         LV_COLOR_FORMAT_RGB565
     );
 
-
-    // =================================================
-    // FULL FRAME RENDER MODE
-    // =================================================
 
     lv_display_set_buffers(
         display,
@@ -681,29 +726,13 @@ bool LVGLManager::initialize()
     );
 
 
-    // =================================================
-    // READY
-    // =================================================
-
-    ESP_LOGI(
-        TAG,
-        "LVGL full-frame renderer initialized"
-    );
+    previousFlushEndUs =
+        0;
 
 
     ESP_LOGI(
         TAG,
-        "Logical display: %dx%d portrait",
-        LOGICAL_WIDTH,
-        LOGICAL_HEIGHT
-    );
-
-
-    ESP_LOGI(
-        TAG,
-        "Physical display: %dx%d landscape",
-        PHYSICAL_WIDTH,
-        PHYSICAL_HEIGHT
+        "LVGL tiled-rotation renderer initialized"
     );
 
 

@@ -1,6 +1,5 @@
 #include "SDCardManager.h"
 #include "BoardPins.h"
-#include "CH422GManager.h"
 
 #include <stdio.h>
 
@@ -14,6 +13,9 @@ extern "C" {
 #include "driver/sdspi_host.h"
 
 #include "sdmmc_cmd.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 }
 
 
@@ -22,11 +24,21 @@ namespace {
 constexpr const char* TAG =
     "SDCardManager";
 
+
+constexpr spi_host_device_t SD_SPI_HOST =
+    SPI2_HOST;
+
+
 sdmmc_card_t* card =
     nullptr;
 
+
 sdmmc_host_t host =
     SDSPI_HOST_DEFAULT();
+
+
+bool spiBusInitialized =
+    false;
 
 } // namespace
 
@@ -52,19 +64,18 @@ bool SDCardManager::mount()
     }
 
 
+    ESP_LOGI(
+        TAG,
+        "Starting SD initialization"
+    );
+
+
     // =================================================
-    // CH422G
+    // SPI HOST
     // =================================================
 
-    if (!CH422GManager::initialize())
-    {
-        ESP_LOGE(
-            TAG,
-            "CH422G initialization failed"
-        );
-
-        return false;
-    }
+    host.slot =
+        SD_SPI_HOST;
 
 
     // =================================================
@@ -74,70 +85,164 @@ bool SDCardManager::mount()
     esp_vfs_fat_sdmmc_mount_config_t
         mountConfig = {};
 
-    // Never automatically format
-    // production quiz cards.
+
     mountConfig.format_if_mount_failed =
         false;
 
+
     mountConfig.max_files =
         5;
+
 
     mountConfig.allocation_unit_size =
         16 * 1024;
 
 
     // =================================================
-    // SPI BUS
+    // SPI BUS CONFIG
     // =================================================
 
     spi_bus_config_t busConfig = {};
 
+
     busConfig.mosi_io_num =
         BOARD_SD_MOSI;
+
 
     busConfig.miso_io_num =
         BOARD_SD_MISO;
 
+
     busConfig.sclk_io_num =
         BOARD_SD_CLK;
+
 
     busConfig.quadwp_io_num =
         -1;
 
+
     busConfig.quadhd_io_num =
         -1;
 
+
+    busConfig.data4_io_num =
+        -1;
+
+
+    busConfig.data5_io_num =
+        -1;
+
+
+    busConfig.data6_io_num =
+        -1;
+
+
+    busConfig.data7_io_num =
+        -1;
+
+
     busConfig.max_transfer_sz =
-        4000;
+        4096;
+
+
+    // =================================================
+    // DEBUG INFO
+    // =================================================
+
+    ESP_LOGI(
+        TAG,
+        "SD pins: MOSI=%d MISO=%d CLK=%d CS=%d",
+        BOARD_SD_MOSI,
+        BOARD_SD_MISO,
+        BOARD_SD_CLK,
+        BOARD_SD_CS
+    );
+
+
+    ESP_LOGI(
+        TAG,
+        "SPI host=%d",
+        static_cast<int>(
+            SD_SPI_HOST
+        )
+    );
+
+
+    // =================================================
+    // INITIALIZE SPI BUS
+    // =================================================
+
+    ESP_LOGI(
+        TAG,
+        "Calling spi_bus_initialize..."
+    );
 
 
     esp_err_t result =
         spi_bus_initialize(
-            static_cast<spi_host_device_t>(
-                host.slot
-            ),
+            SD_SPI_HOST,
             &busConfig,
-            SDSPI_DEFAULT_DMA
+            SPI_DMA_CH_AUTO
         );
 
 
+    ESP_LOGI(
+        TAG,
+        "spi_bus_initialize returned: %s",
+        esp_err_to_name(
+            result
+        )
+    );
+
+
     if (
-        result != ESP_OK &&
-        result != ESP_ERR_INVALID_STATE
+        result == ESP_OK
     )
+    {
+        spiBusInitialized =
+            true;
+    }
+    else if (
+        result == ESP_ERR_INVALID_STATE
+    )
+    {
+        ESP_LOGW(
+            TAG,
+            "SPI bus already initialized"
+        );
+
+
+        spiBusInitialized =
+            false;
+    }
+    else
     {
         ESP_LOGE(
             TAG,
             "SPI bus initialization failed: %s",
-            esp_err_to_name(result)
+            esp_err_to_name(
+                result
+            )
         );
+
 
         return false;
     }
 
 
     // =================================================
-    // SD DEVICE
+    // SHORT DELAY
+    // =================================================
+
+    vTaskDelay(
+        pdMS_TO_TICKS(
+            20
+        )
+    );
+
+
+    // =================================================
+    // SD DEVICE CONFIG
     // =================================================
 
     sdspi_device_config_t slotConfig =
@@ -149,15 +254,18 @@ bool SDCardManager::mount()
             BOARD_SD_CS
         );
 
-    slotConfig.host_id =
-        static_cast<spi_host_device_t>(
-            host.slot
-        );
 
+    slotConfig.host_id =
+        SD_SPI_HOST;
+
+
+    // =================================================
+    // MOUNT
+    // =================================================
 
     ESP_LOGI(
         TAG,
-        "Mounting SD card at %s",
+        "Calling esp_vfs_fat_sdspi_mount at %s...",
         BOARD_SD_MOUNT_POINT
     );
 
@@ -172,9 +280,22 @@ bool SDCardManager::mount()
         );
 
 
-    if (result != ESP_OK)
+    ESP_LOGI(
+        TAG,
+        "esp_vfs_fat_sdspi_mount returned: %s",
+        esp_err_to_name(
+            result
+        )
+    );
+
+
+    if (
+        result != ESP_OK
+    )
     {
-        if (result == ESP_FAIL)
+        if (
+            result == ESP_FAIL
+        )
         {
             ESP_LOGE(
                 TAG,
@@ -186,14 +307,38 @@ bool SDCardManager::mount()
             ESP_LOGE(
                 TAG,
                 "Failed to initialize SD card: %s",
-                esp_err_to_name(result)
+                esp_err_to_name(
+                    result
+                )
             );
         }
+
+
+        if (
+            spiBusInitialized
+        )
+        {
+            spi_bus_free(
+                SD_SPI_HOST
+            );
+
+
+            spiBusInitialized =
+                false;
+        }
+
+
+        card =
+            nullptr;
 
 
         return false;
     }
 
+
+    // =================================================
+    // SUCCESS
+    // =================================================
 
     mounted =
         true;
@@ -221,7 +366,9 @@ bool SDCardManager::mount()
 
 void SDCardManager::unmount()
 {
-    if (!mounted)
+    if (
+        !mounted
+    )
     {
         return;
     }
@@ -233,15 +380,23 @@ void SDCardManager::unmount()
     );
 
 
-    spi_bus_free(
-        static_cast<spi_host_device_t>(
-            host.slot
-        )
-    );
+    if (
+        spiBusInitialized
+    )
+    {
+        spi_bus_free(
+            SD_SPI_HOST
+        );
+
+
+        spiBusInitialized =
+            false;
+    }
 
 
     card =
         nullptr;
+
 
     mounted =
         false;

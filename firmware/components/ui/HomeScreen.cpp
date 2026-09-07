@@ -1,6 +1,6 @@
 #include "HomeScreen.h"
-
-#include "esp_log.h"
+#include "QuizScreen.h"
+#include "theme/Theme.h"
 
 
 LV_IMAGE_DECLARE(home_1);
@@ -12,16 +12,9 @@ LV_IMAGE_DECLARE(home_button);
 
 namespace {
 
-constexpr const char* TAG =
-    "HomeScreen";
+lv_timer_t* homeAnimationTimer = nullptr;
 
-
-lv_timer_t* homeAnimationTimer =
-    nullptr;
-
-
-int currentHomeFrame =
-    0;
+int currentHomeFrame = 0;
 
 
 const lv_image_dsc_t* homeFrames[] = {
@@ -30,10 +23,6 @@ const lv_image_dsc_t* homeFrames[] = {
     &home_3
 };
 
-
-// =====================================================
-// BACKGROUND ANIMATION
-// =====================================================
 
 void updateHomeAnimation(
     lv_timer_t* timer
@@ -69,80 +58,66 @@ void updateHomeAnimation(
     );
 }
 
-} // namespace
+}
 
-
-// =====================================================
-// START BUTTON
-// =====================================================
 
 void HomeScreen::startButtonEvent(
     lv_event_t* event
 )
 {
     if (
-        lv_event_get_code(
-            event
-        )
-        !=
-        LV_EVENT_CLICKED
+        lv_event_get_code(event)
+        != LV_EVENT_CLICKED
     ) {
         return;
     }
 
 
-    ESP_LOGI(
-        TAG,
-        "START BUTTON CLICKED"
-    );
-
-
-    // =================================================
-    // TEMPORARY
-    // =================================================
-    //
-    // Touch latency test only.
-    //
-    // Later this will call:
-    //
-    // game->startGame();
-    // QuizScreen::create(*game);
-    //
-}
-
-
-// =====================================================
-// CREATE
-// =====================================================
-
-void HomeScreen::create()
-{
-    lv_obj_t* screen =
-        lv_screen_active();
-
-
-    // =================================================
-    // STOP OLD TIMER
-    // =================================================
-
     if (
-        homeAnimationTimer != nullptr
+        homeAnimationTimer
+        != nullptr
     ) {
+
         lv_timer_delete(
             homeAnimationTimer
         );
-
 
         homeAnimationTimer =
             nullptr;
     }
 
 
-    // =================================================
-    // CLEAN SCREEN
-    // =================================================
+    GameManager* game =
+        static_cast<GameManager*>(
+            lv_event_get_user_data(
+                event
+            )
+        );
+
+
+    game->startGame();
+
+
+    QuizScreen::create(
+        *game
+    );
+}
+
+
+void HomeScreen::create(
+    GameManager& game
+)
+{
+    lv_obj_t* screen =
+        lv_screen_active();
+
 
     lv_obj_clean(
+        screen
+    );
+
+
+    Theme::applyScreen(
         screen
     );
 
@@ -151,9 +126,9 @@ void HomeScreen::create()
         0;
 
 
-    // =================================================
+    // =====================================================
     // BACKGROUND
-    // =================================================
+    // =====================================================
 
     lv_obj_t* background =
         lv_image_create(
@@ -181,32 +156,35 @@ void HomeScreen::create()
     );
 
 
-    // =================================================
+    // =====================================================
     // BACKGROUND ANIMATION
-    // =================================================
-    //
-    // TEMPORARILY DISABLED.
-    //
-    // We are testing whether the 400 ms full-screen
-    // animation is causing the touch latency.
-    //
-    // The Home screen should remain completely static
-    // on home_1 during this test.
-    //
+    // =====================================================
 
-    
+    if (
+        homeAnimationTimer
+        != nullptr
+    ) {
+
+        lv_timer_delete(
+            homeAnimationTimer
+        );
+
+        homeAnimationTimer =
+            nullptr;
+    }
+
+
     homeAnimationTimer =
         lv_timer_create(
             updateHomeAnimation,
             400,
             background
         );
-    
 
 
-    // =================================================
+    // =====================================================
     // TITLE
-    // =================================================
+    // =====================================================
 
     lv_obj_t* title =
         lv_image_create(
@@ -234,9 +212,9 @@ void HomeScreen::create()
     );
 
 
-    // =================================================
+    // =====================================================
     // START BUTTON
-    // =================================================
+    // =====================================================
 
     lv_obj_t* button =
         lv_image_create(
@@ -268,12 +246,6 @@ void HomeScreen::create()
         button,
         startButtonEvent,
         LV_EVENT_CLICKED,
-        nullptr
-    );
-
-
-    ESP_LOGI(
-        TAG,
-        "Home screen created - animation disabled for latency test"
+        &game
     );
 }
