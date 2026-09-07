@@ -58,7 +58,11 @@ add_executable(candy-simulator
     src/ui/SpecialEventScreen.cpp
     src/platform/FileSpecialEventProgressStore.cpp
     src/app/AppController.cpp
+    src/ui/SpecialDayBackground.cpp
+
     src/ui/fonts/quiz_symbols_18.c
+    src/ui/fonts/jersey25_85.c
+
     assets/result/correct_title.c
     assets/result/incorrect_title.c
 
@@ -81,6 +85,67 @@ add_executable(candy-simulator
     assets/result/incorrect_2.c
     assets/result/incorrect_3.c
     assets/result/incorrect_title.c
+
+    assets/candy_select/candy_title.c
+    assets/candy_select/candy_panel.c
+    assets/candy_select/candy_button.c
+
+    assets/dispensing/dispensing_1.c
+    assets/dispensing/dispensing_2.c
+    assets/dispensing/dispensing_3.c
+    assets/dispensing/dispensing_title.c
+
+    # =========================================================
+    # SPECIAL DAYS BACKGROUNDS
+    # =========================================================
+
+    assets/special_days/ab/ab.c
+    assets/special_days/ab/ab_title.c
+    assets/special_days/ab/ab_button.c
+
+    assets/special_days/anewyear/anewyear_1.c
+    assets/special_days/anewyear/anewyear_2.c
+    assets/special_days/anewyear/anewyear_3.c
+    assets/special_days/anewyear/anewyear_title.c
+    assets/special_days/anewyear/anewyear_button.c
+
+    assets/special_days/halloween/halloween_1.c
+    assets/special_days/halloween/halloween_2.c
+    assets/special_days/halloween/halloween_3.c
+    assets/special_days/halloween/halloween_4.c
+    assets/special_days/halloween/halloween_title.c
+    assets/special_days/halloween/halloween_button.c
+
+    assets/special_days/mb/mb.c
+    assets/special_days/mb/mb_title.c
+    assets/special_days/mb/mb_button.c
+
+    assets/special_days/monthi/monthi_1.c
+    assets/special_days/monthi/monthi_2.c
+    assets/special_days/monthi/monthi_3.c
+    assets/special_days/monthi/monthi_4.c
+    assets/special_days/monthi/monthi_title.c
+    assets/special_days/monthi/monthi_button.c
+
+    assets/special_days/newyear/newyear_1.c
+    assets/special_days/newyear/newyear_2.c
+    assets/special_days/newyear/newyear_3.c
+    assets/special_days/newyear/newyear_title.c
+    assets/special_days/newyear/newyear_button.c
+
+    assets/special_days/val/val_1.c
+    assets/special_days/val/val_2.c
+    assets/special_days/val/val_3.c
+    assets/special_days/val/val_4.c
+    assets/special_days/val/val_title.c
+    assets/special_days/val/val_button.c
+
+    assets/special_days/xmas/xmas_1.c
+    assets/special_days/xmas/xmas_2.c
+    assets/special_days/xmas/xmas_3.c
+    assets/special_days/xmas/xmas_4.c
+    assets/special_days/xmas/xmas_title.c
+    assets/special_days/xmas/xmas_button.c
 
     src/ui/theme/Theme.cpp
 

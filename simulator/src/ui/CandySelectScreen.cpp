@@ -1,11 +1,93 @@
 #include "CandySelectScreen.h"
+
 #include "DispensingScreen.h"
-#include "theme/Theme.h"
 
-GameManager* CandySelectScreen::currentGame = nullptr;
+#include <string>
+
+LV_FONT_DECLARE(jersey25_85);
+
+LV_IMAGE_DECLARE(correct_1);
+LV_IMAGE_DECLARE(correct_2);
+LV_IMAGE_DECLARE(correct_3);
+
+LV_IMAGE_DECLARE(candy_title);
+LV_IMAGE_DECLARE(candy_panel);
+LV_IMAGE_DECLARE(candy_button);
 
 
-void CandySelectScreen::candyButtonEvent(
+GameManager*
+CandySelectScreen::currentGame =
+    nullptr;
+
+
+namespace {
+
+lv_timer_t* backgroundTimer =
+    nullptr;
+
+
+int currentBackgroundFrame =
+    0;
+
+
+const lv_image_dsc_t* backgroundFrames[] = {
+    &correct_1,
+    &correct_2,
+    &correct_3
+};
+
+
+void stopBackgroundAnimation()
+{
+    if (
+        backgroundTimer != nullptr
+    ) {
+        lv_timer_delete(
+            backgroundTimer
+        );
+
+        backgroundTimer =
+            nullptr;
+    }
+}
+
+
+void updateBackground(
+    lv_timer_t* timer
+)
+{
+    lv_obj_t* background =
+        static_cast<lv_obj_t*>(
+            lv_timer_get_user_data(
+                timer
+            )
+        );
+
+
+    if (
+        background == nullptr
+    ) {
+        return;
+    }
+
+
+    currentBackgroundFrame =
+        (
+            currentBackgroundFrame + 1
+        )
+        % 3;
+
+
+    lv_image_set_src(
+        background,
+        backgroundFrames[
+            currentBackgroundFrame
+        ]
+    );
+}
+
+
+void candyButtonEvent(
     lv_event_t* event
 )
 {
@@ -17,58 +99,198 @@ void CandySelectScreen::candyButtonEvent(
     }
 
 
+    void* userData =
+        lv_event_get_user_data(
+            event
+        );
+
+
+    int candyIndex =
+        static_cast<int>(
+            reinterpret_cast<intptr_t>(
+                userData
+            )
+        );
+
+
     if (
-        currentGame == nullptr
+        CandySelectScreen::currentGame
+        == nullptr
     ) {
         return;
     }
 
 
-    int slot =
-        static_cast<int>(
-            reinterpret_cast<intptr_t>(
-                lv_event_get_user_data(
-                    event
-                )
-            )
+    stopBackgroundAnimation();
+
+
+    // IMPORTANT:
+    // If your existing GameManager uses a different
+    // method name, replace this one line only.
+    CandySelectScreen::currentGame
+        ->selectCandy(
+            candyIndex
         );
 
-
-    // =================================================
-    // ACTUAL QUIZ REWARD DISPENSE
-    // =================================================
-
-    bool success =
-        currentGame->selectCandy(
-            slot
-        );
-
-
-    if (!success) {
-
-        // Later:
-        // show an error popup / retry screen.
-        //
-        // Do NOT continue to dispensing animation
-        // if the physical dispense failed.
-
-        return;
-    }
-
-
-    // =================================================
-    // DISPENSING VISUAL
-    // =================================================
-    //
-    // Candy has already been dispensed by GameManager.
-    // This screen is now visual-only.
-    // =================================================
 
     DispensingScreen::create(
-        *currentGame
+        *CandySelectScreen::currentGame
     );
 }
 
+}
+
+
+// =====================================================
+// CREATE CANDY BUTTON
+// =====================================================
+
+void CandySelectScreen::createCandyButton(
+    lv_obj_t* parent,
+    int candyNumber,
+    int x,
+    int y
+)
+{
+    lv_obj_t* button =
+        lv_button_create(
+            parent
+        );
+
+
+    lv_obj_set_size(
+        button,
+        125,
+        171
+    );
+
+
+    lv_obj_set_pos(
+        button,
+        x,
+        y
+    );
+
+
+    lv_obj_set_style_bg_opa(
+        button,
+        LV_OPA_TRANSP,
+        0
+    );
+
+
+    lv_obj_set_style_border_width(
+        button,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_shadow_width(
+        button,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_radius(
+        button,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_pad_all(
+        button,
+        0,
+        0
+    );
+
+
+    lv_obj_t* buttonImage =
+        lv_image_create(
+            button
+        );
+
+
+    lv_image_set_src(
+        buttonImage,
+        &candy_button
+    );
+
+
+    lv_obj_center(
+        buttonImage
+    );
+
+
+    lv_obj_remove_flag(
+        buttonImage,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    lv_obj_t* label =
+        lv_label_create(
+            button
+        );
+
+
+    std::string text =
+        std::to_string(
+            candyNumber
+        );
+
+
+    lv_label_set_text(
+        label,
+        text.c_str()
+    );
+
+
+    lv_obj_set_style_text_color(
+        label,
+        lv_color_hex(
+            0xE8FFFF
+        ),
+        0
+    );
+
+
+    lv_obj_set_style_text_font(
+        label,
+        &jersey25_85,
+        0
+    );
+
+
+    lv_obj_center(
+        label
+    );
+
+
+    lv_obj_remove_flag(
+        label,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    lv_obj_add_event_cb(
+        button,
+        candyButtonEvent,
+        LV_EVENT_CLICKED,
+        reinterpret_cast<void*>(
+            static_cast<intptr_t>(
+                candyNumber
+            )
+        )
+    );
+}
+
+
+// =====================================================
+// CREATE
+// =====================================================
 
 void CandySelectScreen::create(
     GameManager& game
@@ -76,6 +298,13 @@ void CandySelectScreen::create(
 {
     currentGame =
         &game;
+
+
+    stopBackgroundAnimation();
+
+
+    currentBackgroundFrame =
+        0;
 
 
     lv_obj_t* screen =
@@ -87,414 +316,227 @@ void CandySelectScreen::create(
     );
 
 
-    Theme::applyScreen(
-        screen
+    // =================================================
+    // FULL-SCREEN CORRECT BACKGROUND
+    // =================================================
+
+    lv_obj_t* background =
+        lv_image_create(
+            screen
+        );
+
+
+    lv_image_set_src(
+        background,
+        &correct_1
+    );
+
+
+    lv_obj_align(
+        background,
+        LV_ALIGN_CENTER,
+        0,
+        0
+    );
+
+
+    lv_obj_remove_flag(
+        background,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    backgroundTimer =
+        lv_timer_create(
+            updateBackground,
+            400,
+            background
+        );
+
+
+    // =================================================
+    // TITLE
+    // 394 x 60
+    // =================================================
+
+    lv_obj_t* title =
+        lv_image_create(
+            screen
+        );
+
+
+    lv_image_set_src(
+        title,
+        &candy_title
+    );
+
+
+    lv_obj_align(
+        title,
+        LV_ALIGN_TOP_MID,
+        0,
+        80
+    );
+
+
+    lv_obj_remove_flag(
+        title,
+        LV_OBJ_FLAG_CLICKABLE
     );
 
 
     // =================================================
-    // MAIN CONTENT
+    // PANEL
+    // 445 x 475
     // =================================================
 
-    lv_obj_t* content =
+    lv_obj_t* panel =
+        lv_image_create(
+            screen
+        );
+
+
+    lv_image_set_src(
+        panel,
+        &candy_panel
+    );
+
+
+    lv_obj_align(
+        panel,
+        LV_ALIGN_TOP_MID,
+        0,
+        185
+    );
+
+
+    lv_obj_remove_flag(
+        panel,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    // =================================================
+    // INVISIBLE BUTTON LAYER
+    //
+    // We create a transparent container exactly over
+    // the panel so all positions are relative to it.
+    // =================================================
+
+    lv_obj_t* buttonLayer =
         lv_obj_create(
             screen
         );
 
 
     lv_obj_set_size(
-        content,
-        LV_PCT(100),
-        LV_PCT(100)
+        buttonLayer,
+        445,
+        475
+    );
+
+
+    lv_obj_align(
+        buttonLayer,
+        LV_ALIGN_TOP_MID,
+        0,
+        185
     );
 
 
     lv_obj_set_style_bg_opa(
-        content,
+        buttonLayer,
         LV_OPA_TRANSP,
         0
     );
 
 
     lv_obj_set_style_border_width(
-        content,
+        buttonLayer,
         0,
         0
     );
 
 
     lv_obj_set_style_pad_all(
-        content,
-        Theme::SPACING_LG,
-        0
-    );
-
-
-    // =================================================
-    // CENTER AREA
-    // =================================================
-    //
-    // This container fills the whole usable screen.
-    // The actual candy UI block will be centered inside.
-    //
-    // =================================================
-
-    lv_obj_t* centerArea =
-        lv_obj_create(
-            content
-        );
-
-
-    lv_obj_set_size(
-        centerArea,
-        LV_PCT(100),
-        LV_PCT(100)
-    );
-
-
-    lv_obj_set_style_bg_opa(
-        centerArea,
-        LV_OPA_TRANSP,
-        0
-    );
-
-
-    lv_obj_set_style_border_width(
-        centerArea,
+        buttonLayer,
         0,
         0
     );
 
 
-    lv_obj_set_style_pad_all(
-        centerArea,
+    lv_obj_set_style_radius(
+        buttonLayer,
         0,
         0
     );
 
 
-    lv_obj_set_scrollbar_mode(
-        centerArea,
-        LV_SCROLLBAR_MODE_OFF
-    );
-
-
-    lv_obj_remove_flag(
-        centerArea,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-
-    lv_obj_set_flex_flow(
-        centerArea,
-        LV_FLEX_FLOW_COLUMN
-    );
-
-
-    lv_obj_set_flex_align(
-        centerArea,
-
-        // Vertical center
-        LV_FLEX_ALIGN_CENTER,
-
-        // Horizontal center
-        LV_FLEX_ALIGN_CENTER,
-
-        LV_FLEX_ALIGN_CENTER
-    );
-
-
     // =================================================
-    // CANDY CONTENT BLOCK
-    // =================================================
+    // BUTTON POSITIONS
     //
-    // Title + subtitle + grid are treated as one block.
-    // The block itself keeps content-based height.
+    // Panel: 445 x 475
+    // Button: 125 x 171
     //
-    // =================================================
-
-    lv_obj_t* candyContent =
-        lv_obj_create(
-            centerArea
-        );
-
-
-    lv_obj_set_width(
-        candyContent,
-        LV_PCT(100)
-    );
-
-
-    lv_obj_set_height(
-        candyContent,
-        LV_SIZE_CONTENT
-    );
-
-
-    lv_obj_set_style_bg_opa(
-        candyContent,
-        LV_OPA_TRANSP,
-        0
-    );
-
-
-    lv_obj_set_style_border_width(
-        candyContent,
-        0,
-        0
-    );
-
-
-    lv_obj_set_style_pad_all(
-        candyContent,
-        0,
-        0
-    );
-
-
-    lv_obj_set_style_pad_row(
-        candyContent,
-        Theme::SPACING_LG,
-        0
-    );
-
-
-    lv_obj_set_flex_flow(
-        candyContent,
-        LV_FLEX_FLOW_COLUMN
-    );
-
-
-    lv_obj_set_flex_align(
-        candyContent,
-
-        LV_FLEX_ALIGN_START,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER
-    );
-
-
-    // =================================================
-    // TITLE
-    // =================================================
-
-    lv_obj_t* title =
-        lv_label_create(
-            candyContent
-        );
-
-
-    lv_label_set_text(
-        title,
-        "CHOOSE YOUR CANDY"
-    );
-
-
-    Theme::applyTitle(
-        title
-    );
-
-
-    // =================================================
-    // SUBTITLE
-    // =================================================
-
-    lv_obj_t* subtitle =
-        lv_label_create(
-            candyContent
-        );
-
-
-    lv_label_set_text(
-        subtitle,
-        "Pick one reward"
-    );
-
-
-    Theme::applyNormalText(
-        subtitle
-    );
-
-
-    // =================================================
-    // CANDY GRID
-    // =================================================
-
-    lv_obj_t* grid =
-        lv_obj_create(
-            candyContent
-        );
-
-
-    lv_obj_set_width(
-        grid,
-        LV_PCT(95)
-    );
-
-
-    // Fixed pixel height instead of percentage.
+    // Row 1:
+    // 1 2 3
     //
-    // Percentage height was tied to the entire screen,
-    // which made the grid unnecessarily tall.
-    //
-    // 500 px still gives six large touch targets while
-    // allowing the complete block to be centered.
-    lv_obj_set_height(
-        grid,
-        500
-    );
-
-
-    Theme::applyPanel(
-        grid
-    );
-
-
-    lv_obj_set_style_pad_all(
-        grid,
-        Theme::SPACING_MD,
-        0
-    );
-
-
-    lv_obj_set_style_pad_row(
-        grid,
-        Theme::SPACING_MD,
-        0
-    );
-
-
-    lv_obj_set_style_pad_column(
-        grid,
-        Theme::SPACING_MD,
-        0
-    );
-
-
-    static int32_t columns[] = {
-
-        LV_GRID_FR(1),
-        LV_GRID_FR(1),
-        LV_GRID_FR(1),
-
-        LV_GRID_TEMPLATE_LAST
-    };
-
-
-    static int32_t rows[] = {
-
-        LV_GRID_FR(1),
-        LV_GRID_FR(1),
-
-        LV_GRID_TEMPLATE_LAST
-    };
-
-
-    lv_obj_set_grid_dsc_array(
-        grid,
-        columns,
-        rows
-    );
-
-
-    lv_obj_set_layout(
-        grid,
-        LV_LAYOUT_GRID
-    );
-
-
-    // =================================================
-    // 6 CANDY BUTTONS
+    // Row 2:
+    // 4 5 6
     // =================================================
 
-    for (
-        int i = 0;
-        i < 6;
-        i++
-    ) {
+    const int x1 = 15;
+    const int x2 = 160;
+    const int x3 = 305;
 
-        int row =
-            i / 3;
+    const int y1 = 35;
+    const int y2 = 241;
 
 
-        int column =
-            i % 3;
+    createCandyButton(
+        buttonLayer,
+        1,
+        x1,
+        y1
+    );
 
 
-        lv_obj_t* button =
-            lv_button_create(
-                grid
-            );
+    createCandyButton(
+        buttonLayer,
+        2,
+        x2,
+        y1
+    );
 
 
-        lv_obj_set_grid_cell(
-            button,
-
-            LV_GRID_ALIGN_STRETCH,
-            column,
-            1,
-
-            LV_GRID_ALIGN_STRETCH,
-            row,
-            1
-        );
+    createCandyButton(
+        buttonLayer,
+        3,
+        x3,
+        y1
+    );
 
 
-        Theme::applyPrimaryButton(
-            button
-        );
+    createCandyButton(
+        buttonLayer,
+        4,
+        x1,
+        y2
+    );
 
 
-        lv_obj_t* label =
-            lv_label_create(
-                button
-            );
+    createCandyButton(
+        buttonLayer,
+        5,
+        x2,
+        y2
+    );
 
 
-        char text[16];
-
-
-        snprintf(
-            text,
-            sizeof(text),
-            "CANDY %d",
-            i + 1
-        );
-
-
-        lv_label_set_text(
-            label,
-            text
-        );
-
-
-        Theme::applyButtonText(
-            label
-        );
-
-
-        lv_obj_set_style_text_align(
-            label,
-            LV_TEXT_ALIGN_CENTER,
-            0
-        );
-
-
-        lv_obj_center(
-            label
-        );
-
-
-        lv_obj_add_event_cb(
-            button,
-            candyButtonEvent,
-            LV_EVENT_CLICKED,
-
-            reinterpret_cast<void*>(
-                static_cast<intptr_t>(
-                    i + 1
-                )
-            )
-        );
-    }
+    createCandyButton(
+        buttonLayer,
+        6,
+        x3,
+        y2
+    );
 }

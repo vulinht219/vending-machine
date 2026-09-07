@@ -1,21 +1,107 @@
 #include "DispensingScreen.h"
 
+
+
 #include "HomeScreen.h"
-#include "theme/Theme.h"
 
 
-// =====================================================
-// STATIC DATA
-// =====================================================
+LV_IMAGE_DECLARE(dispensing_1);
+LV_IMAGE_DECLARE(dispensing_2);
+LV_IMAGE_DECLARE(dispensing_3);
+LV_IMAGE_DECLARE(dispensing_title);
+
 
 GameManager*
-    DispensingScreen::currentGame =
+DispensingScreen::currentGame =
+    nullptr;
+
+
+namespace {
+
+lv_timer_t* animationTimer =
+    nullptr;
+
+lv_timer_t* finishTimer =
+    nullptr;
+
+int currentFrame =
+    0;
+
+
+const lv_image_dsc_t* frames[] = {
+    &dispensing_1,
+    &dispensing_2,
+    &dispensing_3
+};
+
+
+void stopAnimation()
+{
+    if (
+        animationTimer != nullptr
+    ) {
+        lv_timer_delete(
+            animationTimer
+        );
+
+        animationTimer =
+            nullptr;
+    }
+}
+
+
+void animationTick(
+    lv_timer_t* timer
+)
+{
+    lv_obj_t* image =
+        static_cast<lv_obj_t*>(
+            lv_timer_get_user_data(
+                timer
+            )
+        );
+
+
+    if (
+        image == nullptr
+    ) {
+        return;
+    }
+
+
+    currentFrame =
+        (
+            currentFrame + 1
+        )
+        % 3;
+
+
+    lv_image_set_src(
+        image,
+        frames[
+            currentFrame
+        ]
+    );
+}
+
+
+void finishDispensing(
+    lv_timer_t* timer
+)
+{
+    finishTimer =
         nullptr;
 
 
-lv_timer_t*
-    DispensingScreen::dispenseTimer =
-        nullptr;
+    stopAnimation();
+
+
+    HomeScreen::create(
+        *DispensingScreen::currentGame
+    );
+}
+
+}
 
 
 // =====================================================
@@ -30,6 +116,25 @@ void DispensingScreen::create(
         &game;
 
 
+    stopAnimation();
+
+
+    if (
+        finishTimer != nullptr
+    ) {
+        lv_timer_delete(
+            finishTimer
+        );
+
+        finishTimer =
+            nullptr;
+    }
+
+
+    currentFrame =
+        0;
+
+
     lv_obj_t* screen =
         lv_screen_active();
 
@@ -39,206 +144,72 @@ void DispensingScreen::create(
     );
 
 
-    Theme::applyScreen(
-        screen
-    );
-
-
     // =================================================
-    // FULL SCREEN CONTENT
+    // FULL-SCREEN DISPENSING ANIMATION
     // =================================================
 
-    lv_obj_t* content =
-        lv_obj_create(
+    lv_obj_t* image =
+        lv_image_create(
             screen
         );
 
 
-    lv_obj_set_size(
-        content,
-        LV_PCT(100),
-        LV_PCT(100)
+    lv_image_set_src(
+        image,
+        &dispensing_1
     );
 
 
-    lv_obj_set_style_bg_opa(
-        content,
-        LV_OPA_TRANSP,
-        0
-    );
-
-
-    lv_obj_set_style_border_width(
-        content,
+    lv_obj_align(
+        image,
+        LV_ALIGN_CENTER,
         0,
         0
     );
 
-
-    lv_obj_set_style_pad_all(
-        content,
-        Theme::SPACING_LG,
-        0
+    lv_obj_t* title =
+        lv_image_create(
+            screen
     );
 
-
-    lv_obj_set_scrollbar_mode(
-        content,
-        LV_SCROLLBAR_MODE_OFF
+    lv_image_set_src(
+        title,
+        &dispensing_title
     );
 
-
-    lv_obj_remove_flag(
-        content,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-
-    // =================================================
-    // CENTER AREA
-    // =================================================
-
-    lv_obj_t* centerArea =
-        lv_obj_create(
-            content
-        );
-
-
-    lv_obj_set_size(
-        centerArea,
-        LV_PCT(100),
-        LV_PCT(100)
-    );
-
-
-    lv_obj_set_style_bg_opa(
-        centerArea,
-        LV_OPA_TRANSP,
-        0
-    );
-
-
-    lv_obj_set_style_border_width(
-        centerArea,
+    lv_obj_align(
+        title,
+        LV_ALIGN_TOP_MID,
         0,
-        0
+        80
     );
-
-
-    lv_obj_set_style_pad_all(
-        centerArea,
-        0,
-        0
-    );
-
-
-    lv_obj_set_scrollbar_mode(
-        centerArea,
-        LV_SCROLLBAR_MODE_OFF
-    );
-
-
-    lv_obj_remove_flag(
-        centerArea,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-
-    lv_obj_set_flex_flow(
-        centerArea,
-        LV_FLEX_FLOW_COLUMN
-    );
-
-
-    lv_obj_set_flex_align(
-        centerArea,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER
-    );
-
 
     // =================================================
-    // TEMPORARY DISPENSING PLACEHOLDER
+    // FRAME ANIMATION
     // =================================================
 
-    lv_obj_t* label =
-        lv_label_create(
-            centerArea
-        );
-
-
-    lv_label_set_text(
-        label,
-        "DISPENSING..."
-    );
-
-
-    Theme::applyTitle(
-        label
-    );
-
-
-    lv_obj_set_style_text_align(
-        label,
-        LV_TEXT_ALIGN_CENTER,
-        0
-    );
-
-
-    // =================================================
-    // TIMER
-    // =================================================
-
-    if (
-        dispenseTimer != nullptr
-    ) {
-
-        lv_timer_delete(
-            dispenseTimer
-        );
-
-
-        dispenseTimer =
-            nullptr;
-    }
-
-
-    dispenseTimer =
+    animationTimer =
         lv_timer_create(
-            dispenseFinished,
+            animationTick,
+            400,
+            image
+        );
+
+
+    // =================================================
+    // AFTER 5 SECONDS -> HOME
+    // =================================================
+
+    finishTimer =
+        lv_timer_create(
+            finishDispensing,
             5000,
             nullptr
         );
 
 
     lv_timer_set_repeat_count(
-        dispenseTimer,
+        finishTimer,
         1
-    );
-}
-
-
-// =====================================================
-// FINISHED
-// =====================================================
-
-void DispensingScreen::dispenseFinished(
-    lv_timer_t* timer
-)
-{
-    dispenseTimer =
-        nullptr;
-
-
-    if (
-        currentGame == nullptr
-    ) {
-        return;
-    }
-
-
-    HomeScreen::create(
-        *currentGame
     );
 }

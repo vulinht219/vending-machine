@@ -1,8 +1,43 @@
 #include "ui/screens/SpecialEventIntroScreen.h"
 
 #include "ui/SpecialEventScreen.h"
-#include "ui/theme/Theme.h"
+#include "ui/SpecialDayBackground.h"
 
+#include <cstdint>
+
+
+// =====================================================
+// SPECIAL EVENT ASSETS
+// =====================================================
+
+LV_IMAGE_DECLARE(monthi_title);
+LV_IMAGE_DECLARE(monthi_button);
+
+LV_IMAGE_DECLARE(halloween_title);
+LV_IMAGE_DECLARE(halloween_button);
+
+LV_IMAGE_DECLARE(xmas_title);
+LV_IMAGE_DECLARE(xmas_button);
+
+LV_IMAGE_DECLARE(anewyear_title);
+LV_IMAGE_DECLARE(anewyear_button);
+
+LV_IMAGE_DECLARE(newyear_title);
+LV_IMAGE_DECLARE(newyear_button);
+
+LV_IMAGE_DECLARE(val_title);
+LV_IMAGE_DECLARE(val_button);
+
+LV_IMAGE_DECLARE(mb_title);
+LV_IMAGE_DECLARE(mb_button);
+
+LV_IMAGE_DECLARE(ab_title);
+LV_IMAGE_DECLARE(ab_button);
+
+
+// =====================================================
+// STATIC DATA
+// =====================================================
 
 SpecialEventManager*
 SpecialEventIntroScreen::currentSpecialEventManager =
@@ -19,9 +54,14 @@ SpecialEventIntroScreen::currentEventType =
     SpecialEventType::NONE;
 
 
+// =====================================================
+// ASSET MAPPING
+// =====================================================
 
-const char*
-SpecialEventIntroScreen::getTitle(
+namespace {
+
+const lv_image_dsc_t*
+getTitleAsset(
     SpecialEventType eventType
 )
 {
@@ -30,47 +70,46 @@ SpecialEventIntroScreen::getTitle(
     ) {
 
         case SpecialEventType::MONTHIVERSARY:
-            return "Happy monthiversaryy";
-
-
-        case SpecialEventType::NEW_YEAR:
-            return "happy new yearr";
-
-
-        case SpecialEventType::VALENTINE:
-            return "Happy Valentine";
-
-
-        case SpecialEventType::BIRTHDAY_SEPTEMBER:
-            return "It's my birthday, have a sweet";
-
-
-        case SpecialEventType::BIRTHDAY_OCTOBER:
-            return "Happy birthdayy";
+            return &monthi_title;
 
 
         case SpecialEventType::HALLOWEEN:
-            return "Trick or treat!";
+            return &halloween_title;
 
 
         case SpecialEventType::CHRISTMAS:
-            return "Merry Xmas";
+            return &xmas_title;
 
 
         case SpecialEventType::NEW_YEARS_EVE:
-            return "One last sweet this year?";
+            return &anewyear_title;
+
+
+        case SpecialEventType::NEW_YEAR:
+            return &newyear_title;
+
+
+        case SpecialEventType::VALENTINE:
+            return &val_title;
+
+
+        case SpecialEventType::BIRTHDAY_SEPTEMBER:
+            return &mb_title;
+
+
+        case SpecialEventType::BIRTHDAY_OCTOBER:
+            return &ab_title;
 
 
         case SpecialEventType::NONE:
         default:
-            return "";
+            return nullptr;
     }
 }
 
 
-
-const char*
-SpecialEventIntroScreen::getButtonText(
+const lv_image_dsc_t*
+getButtonAsset(
     SpecialEventType eventType
 )
 {
@@ -79,44 +118,65 @@ SpecialEventIntroScreen::getButtonText(
     ) {
 
         case SpecialEventType::MONTHIVERSARY:
-            return "HAPPY MONTHIVERSARY";
-
-
-        case SpecialEventType::NEW_YEAR:
-            return "HAPPY NEW YEAR";
-
-
-        case SpecialEventType::VALENTINE:
-            return "HAPPY VALENTINE";
-
-
-        case SpecialEventType::BIRTHDAY_SEPTEMBER:
-            return "HAPPY BIRTHDAY";
-
-
-        case SpecialEventType::BIRTHDAY_OCTOBER:
-            return "HAPPY BIRTHDAY";
+            return &monthi_button;
 
 
         case SpecialEventType::HALLOWEEN:
-            return "TRICK OR TREAT";
+            return &halloween_button;
 
 
         case SpecialEventType::CHRISTMAS:
-            return "MERRY XMAS";
+            return &xmas_button;
 
 
         case SpecialEventType::NEW_YEARS_EVE:
-            return "ONE LAST SWEET";
+            return &anewyear_button;
+
+
+        case SpecialEventType::NEW_YEAR:
+            return &newyear_button;
+
+
+        case SpecialEventType::VALENTINE:
+            return &val_button;
+
+
+        case SpecialEventType::BIRTHDAY_SEPTEMBER:
+            return &mb_button;
+
+
+        case SpecialEventType::BIRTHDAY_OCTOBER:
+            return &ab_button;
 
 
         case SpecialEventType::NONE:
         default:
-            return "CONTINUE";
+            return nullptr;
     }
 }
 
 
+int getTitleHeight(
+    SpecialEventType eventType
+)
+{
+    if (
+        eventType
+        == SpecialEventType::NEW_YEARS_EVE
+    ) {
+        return 129;
+    }
+
+
+    return 85;
+}
+
+}
+
+
+// =====================================================
+// CONTINUE BUTTON EVENT
+// =====================================================
 
 void
 SpecialEventIntroScreen::continueButtonEvent(
@@ -144,6 +204,9 @@ SpecialEventIntroScreen::continueButtonEvent(
     }
 
 
+    SpecialDayBackground::stop();
+
+
     SpecialEventScreen::create(
         *currentSpecialEventManager,
         *currentGame,
@@ -152,6 +215,9 @@ SpecialEventIntroScreen::continueButtonEvent(
 }
 
 
+// =====================================================
+// CREATE
+// =====================================================
 
 void
 SpecialEventIntroScreen::create(
@@ -172,6 +238,9 @@ SpecialEventIntroScreen::create(
         eventType;
 
 
+    SpecialDayBackground::stop();
+
+
     lv_obj_t* screen =
         lv_screen_active();
 
@@ -181,229 +250,173 @@ SpecialEventIntroScreen::create(
     );
 
 
-    Theme::applyScreen(
-        screen
+    // =================================================
+    // SPECIAL-DAY BACKGROUND
+    // =================================================
+
+    SpecialDayBackground::create(
+        screen,
+        eventType
     );
 
 
-    // =====================================================
-    // MAIN CONTENT
-    // =====================================================
+    // =================================================
+    // TITLE
+    // =================================================
 
-    lv_obj_t* content =
-        lv_obj_create(
+    const lv_image_dsc_t* titleAsset =
+        getTitleAsset(
+            eventType
+        );
+
+
+    if (
+        titleAsset != nullptr
+    ) {
+
+        lv_obj_t* title =
+            lv_image_create(
+                screen
+            );
+
+
+        lv_image_set_src(
+            title,
+            titleAsset
+        );
+
+
+        lv_obj_set_size(
+            title,
+            464,
+            getTitleHeight(
+                eventType
+            )
+        );
+
+
+        lv_obj_align(
+            title,
+            LV_ALIGN_TOP_MID,
+            0,
+            95
+        );
+
+
+        lv_obj_remove_flag(
+            title,
+            LV_OBJ_FLAG_CLICKABLE
+        );
+    }
+
+
+    // =================================================
+    // BUTTON ASSET
+    // =================================================
+
+    const lv_image_dsc_t* buttonAsset =
+        getButtonAsset(
+            eventType
+        );
+
+
+    if (
+        buttonAsset == nullptr
+    ) {
+        return;
+    }
+
+
+    // =================================================
+    // CLICKABLE TRANSPARENT BUTTON
+    // =================================================
+
+    lv_obj_t* button =
+        lv_button_create(
             screen
         );
 
 
-    lv_obj_remove_style_all(
-        content
+    lv_obj_set_size(
+        button,
+        275,
+        105
     );
 
 
-    lv_obj_set_size(
-        content,
-        LV_PCT(100),
-        LV_PCT(100)
+    lv_obj_align(
+        button,
+        LV_ALIGN_BOTTOM_MID,
+        0,
+        -70
+    );
+
+
+    lv_obj_set_style_bg_opa(
+        button,
+        LV_OPA_TRANSP,
+        0
+    );
+
+
+    lv_obj_set_style_border_width(
+        button,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_shadow_width(
+        button,
+        0,
+        0
+    );
+
+
+    lv_obj_set_style_radius(
+        button,
+        0,
+        0
     );
 
 
     lv_obj_set_style_pad_all(
-        content,
-        Theme::SPACING_LG,
-        0
-    );
-
-
-    lv_obj_clear_flag(
-        content,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-
-    // =====================================================
-    // CENTER AREA
-    // =====================================================
-
-    lv_obj_t* centerArea =
-        lv_obj_create(
-            content
-        );
-
-
-    lv_obj_remove_style_all(
-        centerArea
-    );
-
-
-    lv_obj_set_size(
-        centerArea,
-        LV_PCT(100),
-        LV_PCT(100)
-    );
-
-
-    lv_obj_set_flex_flow(
-        centerArea,
-        LV_FLEX_FLOW_COLUMN
-    );
-
-
-    lv_obj_set_flex_align(
-        centerArea,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER
-    );
-
-
-    lv_obj_clear_flag(
-        centerArea,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-
-    // =====================================================
-    // EVENT CONTENT
-    // =====================================================
-
-    lv_obj_t* eventContent =
-        lv_obj_create(
-            centerArea
-        );
-
-
-    lv_obj_remove_style_all(
-        eventContent
-    );
-
-
-    lv_obj_set_width(
-        eventContent,
-        LV_PCT(100)
-    );
-
-
-    lv_obj_set_height(
-        eventContent,
-        LV_SIZE_CONTENT
-    );
-
-
-    lv_obj_set_flex_flow(
-        eventContent,
-        LV_FLEX_FLOW_COLUMN
-    );
-
-
-    lv_obj_set_flex_align(
-        eventContent,
-        LV_FLEX_ALIGN_START,
-        LV_FLEX_ALIGN_CENTER,
-        LV_FLEX_ALIGN_CENTER
-    );
-
-
-    lv_obj_set_style_pad_row(
-        eventContent,
-        Theme::SPACING_LG,
-        0
-    );
-
-
-    lv_obj_clear_flag(
-        eventContent,
-        LV_OBJ_FLAG_SCROLLABLE
-    );
-
-
-    // =====================================================
-    // TITLE
-    // =====================================================
-
-    lv_obj_t* title =
-        lv_label_create(
-            eventContent
-        );
-
-
-    lv_label_set_text(
-        title,
-        getTitle(
-            eventType
-        )
-    );
-
-
-    Theme::applyTitle(
-        title
-    );
-
-
-    lv_obj_set_width(
-        title,
-        LV_PCT(90)
-    );
-
-
-    lv_label_set_long_mode(
-        title,
-        LV_LABEL_LONG_WRAP
-    );
-
-
-    lv_obj_set_style_text_align(
-        title,
-        LV_TEXT_ALIGN_CENTER,
-        0
-    );
-
-
-    // =====================================================
-    // CONTINUE BUTTON
-    // =====================================================
-
-    lv_obj_t* button =
-        lv_button_create(
-            eventContent
-        );
-
-
-    Theme::applyPrimaryButton(
-        button
-    );
-
-
-    lv_obj_set_size(
         button,
-        300,
-        80
+        0,
+        0
     );
 
 
-    lv_obj_t* buttonLabel =
-        lv_label_create(
+    // =================================================
+    // BUTTON IMAGE
+    // =================================================
+
+    lv_obj_t* buttonImage =
+        lv_image_create(
             button
         );
 
 
-    lv_label_set_text(
-        buttonLabel,
-        getButtonText(
-            eventType
-        )
-    );
-
-
-    Theme::applyButtonText(
-        buttonLabel
+    lv_image_set_src(
+        buttonImage,
+        buttonAsset
     );
 
 
     lv_obj_center(
-        buttonLabel
+        buttonImage
     );
 
+
+    lv_obj_remove_flag(
+        buttonImage,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    // =================================================
+    // CLICK EVENT
+    // =================================================
 
     lv_obj_add_event_cb(
         button,
