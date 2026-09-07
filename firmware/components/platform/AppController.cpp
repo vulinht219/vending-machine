@@ -4,9 +4,17 @@
 #include "esp_err.h"
 #include "nvs_flash.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "SDCardManager.h"
 #include "DisplayManager.h"
 #include "TouchManager.h"
+#include "LVGLManager.h"
+
+#include "HomeScreen.h"
+
+#include "lvgl.h"
 
 #include <exception>
 
@@ -69,7 +77,7 @@ void AppController::start()
 
 
     // =================================================
-    // TEMPORARY LCD HARDWARE SELF TEST
+    // LCD
     // =================================================
 
     if (
@@ -78,18 +86,6 @@ void AppController::start()
         ESP_LOGE(
             TAG,
             "LCD initialization failed."
-        );
-
-        return;
-    }
-
-
-    if (
-        !DisplayManager::runSelfTest()
-    ) {
-        ESP_LOGE(
-            TAG,
-            "LCD self-test failed."
         );
 
         return;
@@ -111,7 +107,7 @@ void AppController::start()
 
 
     // =================================================
-    // TEMPORARY GT911 TOUCH SELF TEST
+    // GT911 TOUCH
     // =================================================
 
     if (
@@ -133,37 +129,84 @@ void AppController::start()
 
 
     // =================================================
-    // TEMPORARY BLOCKING TOUCH TEST
+    // LVGL
+    // =================================================
+
+    if (
+        !LVGLManager::initialize()
+    ) {
+        ESP_LOGE(
+            TAG,
+            "LVGL initialization failed."
+        );
+
+        return;
+    }
+
+
+    ESP_LOGI(
+        TAG,
+        "LVGL initialized successfully."
+    );
+
+
+    // =================================================
+    // HOME SCREEN
+    // =================================================
+
+    HomeScreen::create();
+
+
+    ESP_LOGI(
+        TAG,
+        "Real Home screen started."
+    );
+
+
+    // =================================================
+    // TEMPORARY LVGL LOOP
     // =================================================
     //
-    // This intentionally blocks here.
-    //
-    // While testing hardware:
-    //
-    // - LCD should show RGB test bars
-    // - touching the display should print:
-    //
-    //   TOUCH x=123 y=456
-    //
-    // Remove this call after hardware validation.
+    // For now we keep the LVGL loop here while testing
+    // the real Home screen on hardware.
     //
 
-    TouchManager::runSelfTest();
+    while (true)
+    {
+        uint32_t waitMs =
+            lv_timer_handler();
+
+
+        if (
+            waitMs < 5
+        ) {
+            waitMs =
+                5;
+        }
+
+
+        if (
+            waitMs > 20
+        ) {
+            waitMs =
+                20;
+        }
+
+
+        vTaskDelay(
+            pdMS_TO_TICKS(
+                waitMs
+            )
+        );
+    }
 
 
     // =================================================
     // SD CARD
     // =================================================
     //
-    // NOTE:
-    //
-    // During the temporary touch self-test above,
-    // execution will NOT reach this section because
-    // runSelfTest() contains a blocking loop.
-    //
-    // This code remains here so we can simply remove
-    // the self-test call later without rebuilding the
-    // production startup architecture.
+    // Not reached while the temporary LVGL loop above
+    // is active.
     //
 
     if (
@@ -172,10 +215,12 @@ void AppController::start()
         state =
             AppState::SD_ERROR;
 
+
         ESP_LOGE(
             TAG,
             "SD card initialization failed."
         );
+
 
         return;
     }
@@ -200,6 +245,13 @@ void AppController::start()
         ) {
             state =
                 AppState::DATASET_ERROR;
+
+
+            ESP_LOGE(
+                TAG,
+                "Dataset is empty."
+            );
+
 
             return;
         }

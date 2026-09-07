@@ -13,6 +13,7 @@ idf_component_register(
         "CH422GManager.cpp"
         "DisplayManager.cpp"
         "TouchManager.cpp"
+        "LVGLManager.cpp"
 
     INCLUDE_DIRS
         "."
@@ -28,6 +29,8 @@ idf_component_register(
         esp_lcd
         esp_lcd_touch
         esp_lcd_touch_gt911
+        lvgl__lvgl
+        ui
 )
 
 target_compile_options(
