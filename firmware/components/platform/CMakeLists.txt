@@ -31,6 +31,7 @@ idf_component_register(
         esp_lcd_touch_gt911
         lvgl__lvgl
         ui
+        esp_timer
 )
 
 target_compile_options(

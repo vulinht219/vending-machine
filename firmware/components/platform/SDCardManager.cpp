@@ -1,5 +1,6 @@
 #include "SDCardManager.h"
-#include "BoardPins.h"
+
+#include "CH422GManager.h"
 
 #include <stdio.h>
 
@@ -9,6 +10,7 @@ extern "C" {
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 
+#include "driver/gpio.h"
 #include "driver/spi_common.h"
 #include "driver/sdspi_host.h"
 
@@ -16,6 +18,7 @@ extern "C" {
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 }
 
 
@@ -25,8 +28,50 @@ constexpr const char* TAG =
     "SDCardManager";
 
 
+// =====================================================
+// WAVESHARE ESP32-S3-TOUCH-LCD-4.3
+// TF / MICROSD
+// =====================================================
+//
+// Verified with sd-test:
+//
+// MOSI = GPIO11
+// MISO = GPIO13
+// CLK  = GPIO12
+//
+// CS is NOT a normal ESP32 GPIO.
+//
+// SD_CS = CH422G EXIO4
+//
+
+constexpr gpio_num_t SD_MOSI =
+    GPIO_NUM_11;
+
+constexpr gpio_num_t SD_MISO =
+    GPIO_NUM_13;
+
+constexpr gpio_num_t SD_CLK =
+    GPIO_NUM_12;
+
+
+constexpr int SD_CS_EXIO =
+    4;
+
+
+// =====================================================
+// SPI HOST
+// =====================================================
+
 constexpr spi_host_device_t SD_SPI_HOST =
     SPI2_HOST;
+
+
+// =====================================================
+// FILESYSTEM
+// =====================================================
+
+constexpr const char* SD_MOUNT_POINT =
+    "/sdcard";
 
 
 sdmmc_card_t* card =
@@ -53,12 +98,15 @@ bool SDCardManager::mounted =
 
 bool SDCardManager::mount()
 {
-    if (mounted)
+    if (
+        mounted
+    )
     {
         ESP_LOGI(
             TAG,
             "SD card already mounted"
         );
+
 
         return true;
     }
@@ -71,15 +119,44 @@ bool SDCardManager::mount()
 
 
     // =================================================
-    // SPI HOST
+    // CH422G
     // =================================================
+    //
+    // BoardI2CManager + CH422G have already been
+    // initialized by DisplayManager / TouchManager.
+    //
+    // initialize() is safe to call again because the
+    // manager guards its initialized state.
+    //
+
+    if (
+        !CH422GManager::initialize()
+    )
+    {
+        ESP_LOGE(
+            TAG,
+            "CH422G initialization failed"
+        );
+
+
+        return false;
+    }
+
+
+    // =================================================
+    // SD HOST
+    // =================================================
+
+    host =
+        SDSPI_HOST_DEFAULT();
+
 
     host.slot =
         SD_SPI_HOST;
 
 
     // =================================================
-    // FAT FILESYSTEM CONFIG
+    // FAT CONFIG
     // =================================================
 
     esp_vfs_fat_sdmmc_mount_config_t
@@ -99,22 +176,22 @@ bool SDCardManager::mount()
 
 
     // =================================================
-    // SPI BUS CONFIG
+    // SPI BUS
     // =================================================
 
     spi_bus_config_t busConfig = {};
 
 
     busConfig.mosi_io_num =
-        BOARD_SD_MOSI;
+        SD_MOSI;
 
 
     busConfig.miso_io_num =
-        BOARD_SD_MISO;
+        SD_MISO;
 
 
     busConfig.sclk_io_num =
-        BOARD_SD_CLK;
+        SD_CLK;
 
 
     busConfig.quadwp_io_num =
@@ -145,32 +222,27 @@ bool SDCardManager::mount()
         4096;
 
 
-    // =================================================
-    // DEBUG INFO
-    // =================================================
-
     ESP_LOGI(
         TAG,
-        "SD pins: MOSI=%d MISO=%d CLK=%d CS=%d",
-        BOARD_SD_MOSI,
-        BOARD_SD_MISO,
-        BOARD_SD_CLK,
-        BOARD_SD_CS
-    );
-
-
-    ESP_LOGI(
-        TAG,
-        "SPI host=%d",
+        "SD pins: MOSI=%d MISO=%d CLK=%d",
         static_cast<int>(
-            SD_SPI_HOST
+            SD_MOSI
+        ),
+        static_cast<int>(
+            SD_MISO
+        ),
+        static_cast<int>(
+            SD_CLK
         )
     );
 
 
-    // =================================================
-    // INITIALIZE SPI BUS
-    // =================================================
+    ESP_LOGI(
+        TAG,
+        "SD CS = CH422G EXIO%d",
+        SD_CS_EXIO
+    );
+
 
     ESP_LOGI(
         TAG,
@@ -206,6 +278,10 @@ bool SDCardManager::mount()
         result == ESP_ERR_INVALID_STATE
     )
     {
+        // SPI2 was already initialized elsewhere.
+        //
+        // Continue without claiming ownership of the bus.
+
         ESP_LOGW(
             TAG,
             "SPI bus already initialized"
@@ -219,7 +295,7 @@ bool SDCardManager::mount()
     {
         ESP_LOGE(
             TAG,
-            "SPI bus initialization failed: %s",
+            "SPI initialization failed: %s",
             esp_err_to_name(
                 result
             )
@@ -231,8 +307,50 @@ bool SDCardManager::mount()
 
 
     // =================================================
-    // SHORT DELAY
+    // ACTIVATE SD CARD
     // =================================================
+    //
+    // Waveshare connects SD_CS to CH422G EXIO4.
+    //
+    // LOW = active.
+    //
+
+    if (
+        !CH422GManager::setOutput(
+            SD_CS_EXIO,
+            false
+        )
+    )
+    {
+        ESP_LOGE(
+            TAG,
+            "Failed to activate SD CS through EXIO4"
+        );
+
+
+        if (
+            spiBusInitialized
+        )
+        {
+            spi_bus_free(
+                SD_SPI_HOST
+            );
+
+
+            spiBusInitialized =
+                false;
+        }
+
+
+        return false;
+    }
+
+
+    ESP_LOGI(
+        TAG,
+        "SD CS EXIO4 LOW"
+    );
+
 
     vTaskDelay(
         pdMS_TO_TICKS(
@@ -242,21 +360,25 @@ bool SDCardManager::mount()
 
 
     // =================================================
-    // SD DEVICE CONFIG
+    // SDSPI DEVICE
     // =================================================
+    //
+    // CS is handled externally by CH422G.
+    //
+    // Therefore SDSPI must NOT try to configure a
+    // normal ESP32 GPIO as chip-select.
+    //
 
     sdspi_device_config_t slotConfig =
         SDSPI_DEVICE_CONFIG_DEFAULT();
 
 
-    slotConfig.gpio_cs =
-        static_cast<gpio_num_t>(
-            BOARD_SD_CS
-        );
-
-
     slotConfig.host_id =
         SD_SPI_HOST;
+
+
+    slotConfig.gpio_cs =
+        SDSPI_SLOT_NO_CS;
 
 
     // =================================================
@@ -265,14 +387,14 @@ bool SDCardManager::mount()
 
     ESP_LOGI(
         TAG,
-        "Calling esp_vfs_fat_sdspi_mount at %s...",
-        BOARD_SD_MOUNT_POINT
+        "Mounting SD card at %s...",
+        SD_MOUNT_POINT
     );
 
 
     result =
         esp_vfs_fat_sdspi_mount(
-            BOARD_SD_MOUNT_POINT,
+            SD_MOUNT_POINT,
             &host,
             &slotConfig,
             &mountConfig,
@@ -312,6 +434,14 @@ bool SDCardManager::mount()
                 )
             );
         }
+
+
+        // Deselect card.
+
+        CH422GManager::setOutput(
+            SD_CS_EXIO,
+            true
+        );
 
 
         if (
@@ -375,8 +505,16 @@ void SDCardManager::unmount()
 
 
     esp_vfs_fat_sdcard_unmount(
-        BOARD_SD_MOUNT_POINT,
+        SD_MOUNT_POINT,
         card
+    );
+
+
+    // Deselect SD card through CH422G.
+
+    CH422GManager::setOutput(
+        SD_CS_EXIO,
+        true
     );
 
 
