@@ -32,6 +32,10 @@ idf_component_register(
         lvgl__lvgl
         ui
         esp_timer
+
+    PRIV_REQUIRES
+        esp_driver_uart
+        esp_driver_gpio
 )
 
 target_compile_options(
