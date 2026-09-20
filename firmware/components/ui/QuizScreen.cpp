@@ -724,6 +724,15 @@ void QuizScreen::showCancelConfirmation()
         popup
     );
 
+    // Leave-quiz popup: green fill, 5 px border, 25 px radius.
+    lv_obj_set_style_bg_color(popup, lv_color_hex(0x4B7E3C), 0);
+    lv_obj_set_style_bg_opa(popup, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(popup, lv_color_hex(0x387636), 0);
+    lv_obj_set_style_border_opa(popup, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(popup, 5, 0);
+    lv_obj_set_style_radius(popup, 25, 0);
+    lv_obj_set_style_shadow_width(popup, 0, 0);
+
 
     lv_obj_set_style_pad_all(
         popup,
@@ -791,6 +800,11 @@ void QuizScreen::showCancelConfirmation()
     Theme::applyNormalText(
         question
     );
+
+    // Question: exact design color and 28 px font.
+    lv_obj_set_style_text_color(question, lv_color_hex(0xF5EC9D), 0);
+    lv_obj_set_style_text_font(question, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_align(question, LV_TEXT_ALIGN_CENTER, 0);
 
 
     // =================================================
@@ -873,6 +887,16 @@ void QuizScreen::showCancelConfirmation()
         noButton
     );
 
+    // No: red fill, 3 px border, 20 px radius.
+    lv_obj_set_style_bg_color(noButton, lv_color_hex(0xD76460), 0);
+    lv_obj_set_style_bg_opa(noButton, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(noButton, lv_color_hex(0xB94437), 0);
+    lv_obj_set_style_border_opa(noButton, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(noButton, 3, 0);
+    lv_obj_set_style_radius(noButton, 20, 0);
+    lv_obj_set_style_shadow_width(noButton, 0, 0);
+    lv_obj_set_style_text_color(noButton, lv_color_hex(0xFFFFFF), 0);
+
 
     lv_obj_t* noLabel =
         lv_label_create(
@@ -889,6 +913,8 @@ void QuizScreen::showCancelConfirmation()
     Theme::applyButtonText(
         noLabel
     );
+
+    lv_obj_set_style_text_color(noLabel, lv_color_hex(0xFFFFFF), 0);
 
 
     lv_obj_center(
@@ -925,6 +951,16 @@ void QuizScreen::showCancelConfirmation()
         yesButton
     );
 
+    // Yes: lime fill, 3 px border, 20 px radius.
+    lv_obj_set_style_bg_color(yesButton, lv_color_hex(0xDAE75D), 0);
+    lv_obj_set_style_bg_opa(yesButton, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(yesButton, lv_color_hex(0x2CB228), 0);
+    lv_obj_set_style_border_opa(yesButton, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(yesButton, 3, 0);
+    lv_obj_set_style_radius(yesButton, 20, 0);
+    lv_obj_set_style_shadow_width(yesButton, 0, 0);
+    lv_obj_set_style_text_color(yesButton, lv_color_hex(0x2D5A3B), 0);
+
 
     lv_obj_t* yesLabel =
         lv_label_create(
@@ -941,6 +977,8 @@ void QuizScreen::showCancelConfirmation()
     Theme::applyButtonText(
         yesLabel
     );
+
+    lv_obj_set_style_text_color(yesLabel, lv_color_hex(0x2D5A3B), 0);
 
 
     lv_obj_center(
