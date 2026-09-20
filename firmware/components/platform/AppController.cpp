@@ -39,12 +39,33 @@ constexpr uint16_t DS3231_ADDRESS = 0x68;
 
 constexpr uint8_t RTC_STATUS_REGISTER = 0x0F;
 
-// Sensor AD on Waveshare ESP32-S3-Touch-LCD-4.3.
-constexpr gpio_num_t BEAM_GPIO = GPIO_NUM_6;
-
 i2c_master_dev_handle_t rtcDevice = nullptr;
+
 bool rtcReady = false;
 
+// =====================================================
+// IR BREAK-BEAM SENSOR
+// =====================================================
+
+// Waveshare Sensor AD connector.
+//
+// Receiver yellow OUT -> AD / GPIO6.
+// Receiver and transmitter powered from 3.3 V.
+//
+// Adafruit 2168:
+// HIGH = beam clear
+// LOW  = beam broken
+//
+// SENSOR TEST ONLY:
+// No servo control is performed here.
+
+constexpr gpio_num_t SENSOR_GPIO = GPIO_NUM_6;
+
+constexpr uint32_t SENSOR_POLL_MS = 20;
+
+constexpr int SENSOR_STABLE_SAMPLES = 3;
+
+bool sensorReady = false;
 
 // =====================================================
 // NVS
@@ -65,7 +86,6 @@ void initializeNVS()
 
     ESP_ERROR_CHECK(err);
 }
-
 
 // =====================================================
 // RTC HELPERS
@@ -116,7 +136,6 @@ int daysInMonth(int year, int month)
 
     return days[month - 1];
 }
-
 
 // =====================================================
 // RTC I2C
@@ -189,7 +208,6 @@ bool rtcWrite(
 
     return true;
 }
-
 
 // =====================================================
 // READ RTC
@@ -340,7 +358,6 @@ bool readDS3231()
     return true;
 }
 
-
 // =====================================================
 // SET RTC FROM EXPLICIT UTC COMMAND
 // =====================================================
@@ -382,6 +399,7 @@ bool setDS3231(
 
     // Seconds, minutes, 24-hour clock,
     // weekday, date, month and year.
+
     const uint8_t payload[8] = {
         0x00,
         toBCD(second),
@@ -421,6 +439,7 @@ bool setDS3231(
 
     // Clear only OSF (bit 7).
     // Preserve the other status bits.
+
     const uint8_t statusPayload[2] = {
         RTC_STATUS_REGISTER,
         static_cast<uint8_t>(
@@ -467,7 +486,6 @@ bool setDS3231(
 
     return readDS3231();
 }
-
 
 // =====================================================
 // UART COMMAND PROCESSOR
@@ -542,7 +560,6 @@ void processRTCCommand(const char* command)
     }
 }
 
-
 // =====================================================
 // UART RX TASK
 // =====================================================
@@ -570,8 +587,10 @@ void rtcSerialTask(void* argument)
             continue;
         }
 
-        if (character == '\r' ||
-            character == '\n')
+        if (
+            character == '\r' ||
+            character == '\n'
+        )
         {
             if (position > 0)
             {
@@ -602,7 +621,6 @@ void rtcSerialTask(void* argument)
         }
     }
 }
-
 
 // =====================================================
 // START UART RECEIVER
@@ -662,88 +680,117 @@ void startRTCSerialReceiver()
     );
 }
 
-
 // =====================================================
-// BREAK-BEAM SENSOR TEST
-//
-// GPIO6 = Sensor AD.
-// HIGH = beam clear.
-// LOW  = beam broken.
-//
-// This test only prints logs.
-// It does NOT control servos or dispensing.
+// SENSOR: LOG STATE
 // =====================================================
 
-void breakBeamTask(void* argument)
+void logSensorState(int level)
 {
-    (void)argument;
-
-    int stableLevel = -1;
-    int previousSample = -1;
-    int consecutive = 0;
-
-    ESP_LOGI(
-        "BreakBeam",
-        "TEST START: GPIO6; servo control disabled"
-    );
-
-    while (true)
+    if (level == 1)
     {
-        const int sample = gpio_get_level(BEAM_GPIO);
-
-        // Require three consecutive identical readings.
-        // Each reading is separated by approximately 50 ms.
-        if (sample == previousSample)
-        {
-            if (consecutive < 3)
-            {
-                ++consecutive;
-            }
-        }
-        else
-        {
-            previousSample = sample;
-            consecutive = 1;
-        }
-
-        // Only report initial state or a confirmed change.
-        if (
-            consecutive >= 3 &&
-            sample != stableLevel
-        )
-        {
-            stableLevel = sample;
-
-            ESP_LOGI(
-                "BreakBeam",
-                "%s (GPIO6=%d)",
-                stableLevel == 0
-                    ? "BEAM BROKEN"
-                    : "BEAM CLEAR",
-                stableLevel
-            );
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(50));
+        ESP_LOGI(
+            "BreakBeam",
+            "BEAM CLEAR: GPIO6=HIGH (1)"
+        );
+    }
+    else
+    {
+        ESP_LOGW(
+            "BreakBeam",
+            "BEAM BROKEN: GPIO6=LOW (0)"
+        );
     }
 }
 
-
 // =====================================================
-// INITIALIZE BREAK-BEAM SENSOR
+// SENSOR: MONITOR TASK
 // =====================================================
 
-void startBreakBeamTest()
+void sensorMonitorTask(void* argument)
 {
+    (void)argument;
+
+    // Allow sensor and GPIO input to settle.
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    int stableLevel =
+        gpio_get_level(SENSOR_GPIO);
+
+    int candidateLevel = stableLevel;
+
+    int candidateCount = 0;
+
+    ESP_LOGI(
+        "BreakBeam",
+        "SENSOR MONITOR STARTED: GPIO6, pull-up enabled"
+    );
+
+    logSensorState(stableLevel);
+
+    while (true)
+    {
+        vTaskDelay(
+            pdMS_TO_TICKS(SENSOR_POLL_MS)
+        );
+
+        const int rawLevel =
+            gpio_get_level(SENSOR_GPIO);
+
+        // Ignore readings identical to the
+        // currently confirmed stable state.
+
+        if (rawLevel == stableLevel)
+        {
+            candidateLevel = stableLevel;
+            candidateCount = 0;
+            continue;
+        }
+
+        // A different state must persist across
+        // several consecutive samples.
+
+        if (rawLevel != candidateLevel)
+        {
+            candidateLevel = rawLevel;
+            candidateCount = 1;
+        }
+        else
+        {
+            ++candidateCount;
+        }
+
+        if (
+            candidateCount >=
+            SENSOR_STABLE_SAMPLES
+        )
+        {
+            stableLevel = candidateLevel;
+            candidateCount = 0;
+
+            logSensorState(stableLevel);
+        }
+    }
+}
+
+// =====================================================
+// SENSOR: INITIALIZATION
+// =====================================================
+
+bool initializeBreakBeamSensor()
+{
+    if (sensorReady)
+    {
+        return true;
+    }
+
     gpio_config_t config = {};
 
     config.pin_bit_mask =
-        1ULL << BEAM_GPIO;
+        (1ULL << SENSOR_GPIO);
 
-    config.mode =
-        GPIO_MODE_INPUT;
+    config.mode = GPIO_MODE_INPUT;
 
-    // Receiver has an open-collector output.
     config.pull_up_en =
         GPIO_PULLUP_ENABLE;
 
@@ -760,17 +807,22 @@ void startBreakBeamTest()
     {
         ESP_LOGE(
             "BreakBeam",
-            "GPIO6 configuration FAILED: %s",
+            "GPIO6 initialization failed: %s",
             esp_err_to_name(result)
         );
 
-        return;
+        return false;
     }
+
+    ESP_LOGI(
+        "BreakBeam",
+        "GPIO6 configured: INPUT + PULL-UP"
+    );
 
     const BaseType_t taskResult =
         xTaskCreate(
-            breakBeamTask,
-            "beam_test",
+            sensorMonitorTask,
+            "breakbeam_test",
             3072,
             nullptr,
             4,
@@ -781,20 +833,23 @@ void startBreakBeamTest()
     {
         ESP_LOGE(
             "BreakBeam",
-            "Sensor task creation FAILED"
+            "Sensor monitor task creation FAILED"
         );
 
-        return;
+        return false;
     }
+
+    sensorReady = true;
 
     ESP_LOGI(
         "BreakBeam",
-        "GPIO6 input with internal pull-up READY"
+        "SENSOR TEST READY: servo control NOT connected"
     );
+
+    return true;
 }
 
 } // namespace
-
 
 // =====================================================
 // CONSTRUCTOR
@@ -804,7 +859,6 @@ AppController::AppController()
     : state(AppState::BOOTING)
 {
 }
-
 
 // =====================================================
 // START
@@ -1018,7 +1072,10 @@ void AppController::start()
     // SD CARD
     // =================================================
 
-    ESP_LOGI(TAG, "Mounting SD card...");
+    ESP_LOGI(
+        TAG,
+        "Mounting SD card..."
+    );
 
     if (!SDCardManager::mount())
     {
@@ -1108,15 +1165,7 @@ void AppController::start()
     );
 
     // =================================================
-    // BREAK-BEAM SENSOR TEST
-    // =================================================
-
-    // Independent task: logs only.
-    // Does not affect servo calibration or dispensing.
-    startBreakBeamTest();
-
-    // =================================================
-    // TEMPORARY SERVO TEST BUTTON
+    // TEMPORARY SERVO TEST / CALIBRATION BUTTON
     // =================================================
 
     lv_obj_t* servoTestButton =
@@ -1188,6 +1237,30 @@ void AppController::start()
     );
 
     // =================================================
+    // IR BREAK-BEAM SENSOR TEST
+    // =================================================
+
+    ESP_LOGI(
+        TAG,
+        "Starting IR break-beam sensor test..."
+    );
+
+    if (!initializeBreakBeamSensor())
+    {
+        ESP_LOGE(
+            TAG,
+            "IR SENSOR TEST INITIALIZATION FAILED"
+        );
+    }
+    else
+    {
+        ESP_LOGI(
+            TAG,
+            "IR SENSOR TEST INITIALIZATION PASS"
+        );
+    }
+
+    // =================================================
     // LVGL MAIN LOOP
     // =================================================
 
@@ -1212,7 +1285,6 @@ void AppController::start()
     }
 }
 
-
 // =====================================================
 // STATE
 // =====================================================
@@ -1221,7 +1293,6 @@ AppState AppController::getState() const
 {
     return state;
 }
-
 
 // =====================================================
 // GAME

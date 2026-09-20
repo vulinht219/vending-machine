@@ -2,6 +2,7 @@
 
 #include "DispensingScreen.h"
 
+#include <cstdint>
 #include <string>
 
 LV_FONT_DECLARE(jersey25_85);
@@ -37,6 +38,10 @@ const lv_image_dsc_t* backgroundFrames[] = {
 };
 
 
+// =====================================================
+// STOP BACKGROUND ANIMATION
+// =====================================================
+
 void stopBackgroundAnimation()
 {
     if (
@@ -51,6 +56,10 @@ void stopBackgroundAnimation()
     }
 }
 
+
+// =====================================================
+// UPDATE BACKGROUND
+// =====================================================
 
 void updateBackground(
     lv_timer_t* timer
@@ -87,6 +96,10 @@ void updateBackground(
 }
 
 
+// =====================================================
+// CANDY BUTTON EVENT
+// =====================================================
+
 void candyButtonEvent(
     lv_event_t* event
 )
@@ -113,6 +126,22 @@ void candyButtonEvent(
         );
 
 
+    // =================================================
+    // VALIDATE CANDY SLOT
+    // =================================================
+
+    if (
+        candyIndex < 1 ||
+        candyIndex > 6
+    ) {
+        return;
+    }
+
+
+    // =================================================
+    // VALIDATE GAME
+    // =================================================
+
     if (
         CandySelectScreen::currentGame
         == nullptr
@@ -121,17 +150,26 @@ void candyButtonEvent(
     }
 
 
+    // =================================================
+    // STOP BACKGROUND ANIMATION
+    // =================================================
+
     stopBackgroundAnimation();
 
 
-    // IMPORTANT:
-    // If your existing GameManager uses a different
-    // method name, replace this one line only.
+    // =================================================
+    // SELECT CANDY
+    // =================================================
+
     CandySelectScreen::currentGame
         ->selectCandy(
             candyIndex
         );
 
+
+    // =================================================
+    // SHOW DISPENSING SCREEN
+    // =================================================
 
     DispensingScreen::create(
         *CandySelectScreen::currentGame

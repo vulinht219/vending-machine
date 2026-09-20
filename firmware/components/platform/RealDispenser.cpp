@@ -2,7 +2,8 @@
 #include "BoardI2CManager.h"
 
 #include "driver/i2c_master.h"
-
+#include "driver/gpio.h"
+#include "esp_timer.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -20,26 +21,38 @@
 namespace
 {
 
-constexpr const char* TAG = "ServoCalibration";
+constexpr const char* TAG = "RealDispenser";
 
 // =====================================================
-// PCA9685 CONFIGURATION
+// PCA9685
 // =====================================================
 
 constexpr uint8_t PCA9685_ADDRESS = 0x40;
-
 constexpr uint8_t REG_MODE1 = 0x00;
 constexpr uint8_t REG_MODE2 = 0x01;
 constexpr uint8_t REG_LED0_ON_L = 0x06;
 constexpr uint8_t REG_PRESCALE = 0xFE;
-
 constexpr uint8_t SERVO_PRESCALE = 121;
 
 constexpr int CHANNEL_COUNT = 16;
 constexpr int SERVO_COUNT = 6;
 
 // =====================================================
-// CALIBRATION LIMITS
+// SENSOR
+// =====================================================
+
+// Receiver OUT -> GPIO6.
+// HIGH = clear.
+// LOW = beam interrupted.
+//
+// IMPORTANT: GPIO6 must receive 3.3 V logic, not 5 V.
+
+constexpr gpio_num_t SENSOR_GPIO = GPIO_NUM_6;
+constexpr int64_t SENSOR_CLEAR_US = 20000;
+constexpr int SENSOR_LOW_SAMPLES = 2;
+
+// =====================================================
+// LIMITS
 // =====================================================
 
 constexpr uint16_t MIN_PULSE = 280;
@@ -47,11 +60,10 @@ constexpr uint16_t MAX_PULSE = 325;
 
 constexpr uint32_t MIN_DURATION_MS = 100;
 constexpr uint32_t MAX_DURATION_MS = 2500;
-
 constexpr uint32_t DURATION_STEP_MS = 250;
 
 // =====================================================
-// NVS CONFIGURATION
+// NVS
 // =====================================================
 
 constexpr const char* NVS_NAMESPACE = "servo_cal";
@@ -61,7 +73,7 @@ constexpr uint32_t CONFIG_MAGIC = 0x53455256;
 constexpr uint32_t CONFIG_VERSION = 1;
 
 // =====================================================
-// SERVO PROFILES
+// PROFILES
 // =====================================================
 
 struct ServoProfile
@@ -70,19 +82,16 @@ struct ServoProfile
     uint32_t durationMs;
 };
 
-// Defaults from the user's measured test results.
-// These are calibration test values, not final dispensing values.
+// Measured defaults. Saved NVS profiles override these.
 
 ServoProfile profiles[SERVO_COUNT] = {
-    {307, 2100}, // CH0
-    {307, 2100}, // CH1
-    {307, 2100}, // CH2
-    {307, 1850}, // CH3
-    {307, 2100}, // CH4
-    {307, 1600}  // CH5
+    {307, 2100},
+    {307, 2100},
+    {307, 2100},
+    {307, 1850},
+    {307, 2100},
+    {307, 1600}
 };
-
-// Stored as one versioned NVS blob.
 
 struct StoredServoConfig
 {
@@ -105,13 +114,16 @@ std::atomic<bool> faultLatched{false};
 std::atomic<bool> cycleRunning{false};
 std::atomic<bool> stopRequested{false};
 
-// 0 = ready
-// 1 = running
-// 2 = completed
-// 3 = stopped
-// 4 = fault
+// Calibration status:
+// 0 ready, 1 running, 2 complete, 3 stopped, 4 fault.
 
 std::atomic<int> cycleStatus{0};
+
+std::atomic<DispenseStatus> dispenseStatus{
+    DispenseStatus::Idle
+};
+
+std::atomic<int> lastDispenseSlot{0};
 
 struct TestConfiguration
 {
@@ -121,13 +133,15 @@ struct TestConfiguration
 };
 
 TestConfiguration activeTest = {
-    0,
-    307,
-    2100
+    0, 307, 2100
+};
+
+TestConfiguration activeDispense = {
+    0, 307, 2100
 };
 
 // =====================================================
-// UI STATE
+// CALIBRATION UI STATE
 // =====================================================
 
 int selectedChannel = 0;
@@ -168,7 +182,7 @@ bool validProfile(const ServoProfile& profile)
 }
 
 // =====================================================
-// NVS LOAD
+// LOAD PROFILES
 // =====================================================
 
 bool loadProfiles()
@@ -185,7 +199,7 @@ bool loadProfiles()
     {
         ESP_LOGW(
             TAG,
-            "NVS: no saved profiles; using measured defaults"
+            "No saved profiles; using defaults"
         );
 
         profilesDirty = true;
@@ -196,7 +210,7 @@ bool loadProfiles()
     {
         ESP_LOGE(
             TAG,
-            "NVS: open failed: %s",
+            "NVS open failed: %s",
             esp_err_to_name(result)
         );
 
@@ -205,7 +219,6 @@ bool loadProfiles()
     }
 
     StoredServoConfig stored = {};
-
     size_t size = sizeof(stored);
 
     result = nvs_get_blob(
@@ -219,11 +232,6 @@ bool loadProfiles()
 
     if (result == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGW(
-            TAG,
-            "NVS: profile key not found; using defaults"
-        );
-
         profilesDirty = true;
         return true;
     }
@@ -233,11 +241,7 @@ bool loadProfiles()
         size != sizeof(StoredServoConfig)
     )
     {
-        ESP_LOGE(
-            TAG,
-            "NVS: profile read failed or size mismatch"
-        );
-
+        ESP_LOGE(TAG, "NVS profile read failed");
         profilesDirty = true;
         return false;
     }
@@ -247,11 +251,7 @@ bool loadProfiles()
         stored.version != CONFIG_VERSION
     )
     {
-        ESP_LOGW(
-            TAG,
-            "NVS: incompatible profile version; using defaults"
-        );
-
+        ESP_LOGE(TAG, "Incompatible NVS profile");
         profilesDirty = true;
         return false;
     }
@@ -264,7 +264,7 @@ bool loadProfiles()
         {
             ESP_LOGE(
                 TAG,
-                "NVS: invalid CH%d profile; using defaults",
+                "Invalid saved profile CH%d",
                 channel
             );
 
@@ -282,16 +282,12 @@ bool loadProfiles()
 
     profilesDirty = false;
 
-    ESP_LOGI(
-        TAG,
-        "NVS LOAD PASS: all 6 servo profiles restored"
-    );
-
+    ESP_LOGI(TAG, "Loaded all six servo profiles");
     return true;
 }
 
 // =====================================================
-// NVS SAVE
+// SAVE PROFILES
 // =====================================================
 
 bool saveProfiles()
@@ -301,11 +297,7 @@ bool saveProfiles()
         faultLatched.load()
     )
     {
-        ESP_LOGW(
-            TAG,
-            "NVS SAVE REJECTED: servo running or fault"
-        );
-
+        ESP_LOGW(TAG, "Cannot save while running/fault");
         return false;
     }
 
@@ -322,7 +314,7 @@ bool saveProfiles()
         {
             ESP_LOGE(
                 TAG,
-                "NVS SAVE FAIL: invalid CH%d profile",
+                "Invalid profile CH%d",
                 channel
             );
 
@@ -344,7 +336,7 @@ bool saveProfiles()
     {
         ESP_LOGE(
             TAG,
-            "NVS SAVE FAIL: open: %s",
+            "NVS write open failed: %s",
             esp_err_to_name(result)
         );
 
@@ -369,7 +361,7 @@ bool saveProfiles()
     {
         ESP_LOGE(
             TAG,
-            "NVS SAVE FAIL: %s",
+            "NVS save failed: %s",
             esp_err_to_name(result)
         );
 
@@ -378,10 +370,7 @@ bool saveProfiles()
 
     profilesDirty = false;
 
-    ESP_LOGI(
-        TAG,
-        "NVS SAVE PASS: all 6 servo profiles committed"
-    );
+    ESP_LOGI(TAG, "Saved all six servo profiles");
 
     for (int channel = 0;
          channel < SERVO_COUNT;
@@ -389,7 +378,7 @@ bool saveProfiles()
     {
         ESP_LOGI(
             TAG,
-            "SAVED CH%d: PWM=%u duration=%u ms",
+            "CH%d PWM=%u duration=%u ms",
             channel,
             static_cast<unsigned>(profiles[channel].pulse),
             static_cast<unsigned>(profiles[channel].durationMs)
@@ -400,7 +389,7 @@ bool saveProfiles()
 }
 
 // =====================================================
-// I2C HELPERS
+// I2C
 // =====================================================
 
 bool writeBytes(
@@ -417,13 +406,12 @@ bool writeBytes(
         return false;
     }
 
-    const esp_err_t result =
-        i2c_master_transmit(
-            device,
-            bytes,
-            size,
-            100
-        );
+    const esp_err_t result = i2c_master_transmit(
+        device,
+        bytes,
+        size,
+        100
+    );
 
     if (result != ESP_OK)
     {
@@ -445,8 +433,7 @@ bool writeRegister(
 )
 {
     const uint8_t bytes[2] = {
-        reg,
-        value
+        reg, value
     };
 
     return writeBytes(bytes, sizeof(bytes));
@@ -492,7 +479,7 @@ bool readRegisters(
 }
 
 // =====================================================
-// PWM HELPERS
+// PWM
 // =====================================================
 
 uint8_t channelRegister(int channel)
@@ -608,15 +595,11 @@ void latchFault(const char* stage)
 {
     faultLatched.store(true);
     cycleStatus.store(4);
+    dispenseStatus.store(DispenseStatus::Fault);
 
-    ESP_LOGE(
-        TAG,
-        "FAULT at %s",
-        stage
-    );
+    ESP_LOGE(TAG, "FAULT at %s", stage);
 
-    // Best effort only.
-    // The physical power switch remains the reliable cutoff.
+    // Best effort. If I2C fails, use the physical power switch.
 
     for (int channel = 0;
          channel < CHANNEL_COUNT;
@@ -682,7 +665,7 @@ bool initializePCA9685()
         return false;
     }
 
-    // Sleep + auto-increment.
+    // Sleep + auto-increment, configure 50 Hz.
 
     if (
         !writeRegister(REG_MODE1, 0x30) ||
@@ -697,7 +680,7 @@ bool initializePCA9685()
         return false;
     }
 
-    // All channels FULL OFF at startup.
+    // Every channel FULL OFF before waking oscillator.
 
     for (int channel = 0;
          channel < CHANNEL_COUNT;
@@ -746,33 +729,21 @@ bool initializePCA9685()
         }
     }
 
-    // Load saved profiles after hardware initialization.
-    // If none exist, retain the measured defaults.
+    // Restore calibrated profiles.
 
     loadProfiles();
 
     initialized = true;
 
-    ESP_LOGI(
-        TAG,
-        "READY: all 16 channels FULL OFF"
-    );
-
-    ESP_LOGI(
-        TAG,
-        "CALIBRATION READY: CH0-CH5"
-    );
-
-    ESP_LOGW(
-        TAG,
-        "Dispensing disabled"
-    );
+    ESP_LOGI(TAG, "READY: all 16 channels FULL OFF");
+    ESP_LOGI(TAG, "CALIBRATION READY: CH0-CH5");
+    ESP_LOGI(TAG, "GAME DISPENSING ENABLED");
 
     return true;
 }
 
 // =====================================================
-// SERVO TASK
+// CALIBRATION TASK
 // =====================================================
 
 void calibrationTask(void*)
@@ -781,7 +752,7 @@ void calibrationTask(void*)
 
     ESP_LOGI(
         TAG,
-        "RUN START: CH%d pulse=%u duration=%u ms",
+        "CALIBRATION START CH%d pulse=%u duration=%u",
         test.channel,
         static_cast<unsigned>(test.pulse),
         static_cast<unsigned>(test.durationMs)
@@ -789,63 +760,40 @@ void calibrationTask(void*)
 
     if (!verifyFullOff(test.channel))
     {
-        latchFault("pre-run FULL OFF");
-
+        latchFault("calibration pre-run FULL OFF");
         cycleRunning.store(false);
         vTaskDelete(nullptr);
         return;
     }
 
     if (
-        !setPulse(
-            test.channel,
-            test.pulse
-        ) ||
-        !verifyPulse(
-            test.channel,
-            test.pulse
-        )
+        !setPulse(test.channel, test.pulse) ||
+        !verifyPulse(test.channel, test.pulse)
     )
     {
-        latchFault("RUN");
-
+        latchFault("calibration RUN");
         cycleRunning.store(false);
         vTaskDelete(nullptr);
         return;
     }
 
-    const uint32_t stepMs = 10;
-    uint32_t elapsedMs = 0;
+    const int64_t deadlineUs =
+        esp_timer_get_time() +
+        static_cast<int64_t>(test.durationMs) * 1000;
 
     while (
-        elapsedMs < test.durationMs &&
+        esp_timer_get_time() < deadlineUs &&
         !stopRequested.load()
     )
     {
-        const uint32_t remaining =
-            test.durationMs - elapsedMs;
-
-        const uint32_t delayMs =
-            remaining < stepMs
-                ? remaining
-                : stepMs;
-
-        vTaskDelay(
-            pdMS_TO_TICKS(
-                delayMs > 0 ? delayMs : 1
-            )
-        );
-
-        elapsedMs += delayMs;
+        vTaskDelay(1);
     }
 
-    const bool wasStopped =
-        stopRequested.load();
+    const bool wasStopped = stopRequested.load();
 
     if (!fullOffChecked(test.channel))
     {
-        latchFault("final FULL OFF");
-
+        latchFault("calibration final FULL OFF");
         cycleRunning.store(false);
         vTaskDelete(nullptr);
         return;
@@ -857,7 +805,7 @@ void calibrationTask(void*)
 
         ESP_LOGW(
             TAG,
-            "STOPPED: CH%d FULL OFF",
+            "CALIBRATION STOPPED CH%d",
             test.channel
         );
     }
@@ -867,18 +815,173 @@ void calibrationTask(void*)
 
         ESP_LOGI(
             TAG,
-            "RUN COMPLETE: CH%d FULL OFF",
+            "CALIBRATION COMPLETE CH%d",
             test.channel
         );
     }
 
     cycleRunning.store(false);
-
     vTaskDelete(nullptr);
 }
 
 // =====================================================
-// START CALIBRATION RUN
+// DISPENSE COMPLETION
+// =====================================================
+
+void finishDispense(
+    const TestConfiguration& job,
+    DispenseStatus result
+)
+{
+    if (!fullOffChecked(job.channel))
+    {
+        latchFault("dispense final FULL OFF");
+    }
+    else if (!faultLatched.load())
+    {
+        dispenseStatus.store(result);
+
+        cycleStatus.store(
+            result == DispenseStatus::CandyDetected
+                ? 2
+                : 3
+        );
+
+        ESP_LOGI(
+            TAG,
+            "DISPENSE END slot=%d CH%d status=%d FULL OFF",
+            job.channel + 1,
+            job.channel,
+            static_cast<int>(result)
+        );
+    }
+
+    cycleRunning.store(false);
+    vTaskDelete(nullptr);
+}
+
+// =====================================================
+// DISPENSE TASK
+// =====================================================
+
+void dispenseTask(void*)
+{
+    const TestConfiguration job = activeDispense;
+
+    if (!verifyFullOff(job.channel))
+    {
+        latchFault("dispense pre-run FULL OFF");
+        cycleRunning.store(false);
+        vTaskDelete(nullptr);
+        return;
+    }
+
+    // Require beam to be clear before starting.
+
+    const int64_t clearStart =
+        esp_timer_get_time();
+
+    while (
+        esp_timer_get_time() - clearStart <
+        SENSOR_CLEAR_US
+    )
+    {
+        if (stopRequested.load())
+        {
+            finishDispense(
+                job,
+                DispenseStatus::Stopped
+            );
+
+            return;
+        }
+
+        if (gpio_get_level(SENSOR_GPIO) != 1)
+        {
+            ESP_LOGW(
+                TAG,
+                "DISPENSE REJECTED: sensor blocked"
+            );
+
+            finishDispense(
+                job,
+                DispenseStatus::SensorBlocked
+            );
+
+            return;
+        }
+
+        vTaskDelay(1);
+    }
+
+    if (stopRequested.load())
+    {
+        finishDispense(
+            job,
+            DispenseStatus::Stopped
+        );
+
+        return;
+    }
+
+    // Maximum rotation time for this slot.
+
+    const int64_t deadlineUs =
+        esp_timer_get_time() +
+        static_cast<int64_t>(job.durationMs) * 1000;
+
+    if (
+        !setPulse(job.channel, job.pulse) ||
+        !verifyPulse(job.channel, job.pulse)
+    )
+    {
+        latchFault("dispense motor start");
+        cycleRunning.store(false);
+        vTaskDelete(nullptr);
+        return;
+    }
+
+    int consecutiveLow = 0;
+
+    DispenseStatus result =
+        DispenseStatus::TimedOut;
+
+    while (esp_timer_get_time() < deadlineUs)
+    {
+        if (stopRequested.load())
+        {
+            result = DispenseStatus::Stopped;
+            break;
+        }
+
+        if (gpio_get_level(SENSOR_GPIO) == 0)
+        {
+            ++consecutiveLow;
+
+            if (consecutiveLow >= SENSOR_LOW_SAMPLES)
+            {
+                result = DispenseStatus::CandyDetected;
+                break;
+            }
+        }
+        else
+        {
+            consecutiveLow = 0;
+        }
+
+        vTaskDelay(1);
+    }
+
+    if (stopRequested.load())
+    {
+        result = DispenseStatus::Stopped;
+    }
+
+    finishDispense(job, result);
+}
+
+// =====================================================
+// START CALIBRATION
 // =====================================================
 
 bool startCalibrationRun()
@@ -888,11 +991,7 @@ bool startCalibrationRun()
         faultLatched.load()
     )
     {
-        ESP_LOGE(
-            TAG,
-            "RUN REJECTED: system not ready"
-        );
-
+        ESP_LOGE(TAG, "Calibration rejected: not ready");
         return false;
     }
 
@@ -903,11 +1002,7 @@ bool startCalibrationRun()
             true
         ))
     {
-        ESP_LOGW(
-            TAG,
-            "RUN REJECTED: already running"
-        );
-
+        ESP_LOGW(TAG, "Calibration rejected: busy");
         return false;
     }
 
@@ -928,42 +1023,35 @@ bool startCalibrationRun()
     stopRequested.store(false);
     cycleStatus.store(1);
 
-    const BaseType_t result =
-        xTaskCreate(
-            calibrationTask,
-            "servo_calibration",
-            4096,
-            nullptr,
-            5,
-            nullptr
-        );
+    const BaseType_t result = xTaskCreate(
+        calibrationTask,
+        "servo_calibration",
+        4096,
+        nullptr,
+        5,
+        nullptr
+    );
 
     if (result != pdPASS)
     {
         cycleRunning.store(false);
         cycleStatus.store(4);
 
-        ESP_LOGE(
-            TAG,
-            "RUN REJECTED: task creation failed"
-        );
-
+        ESP_LOGE(TAG, "Calibration task creation failed");
         return false;
     }
 
     ESP_LOGI(
         TAG,
-        "RUN ACCEPTED: CH%d pulse=%u duration=%u",
-        activeTest.channel,
-        static_cast<unsigned>(activeTest.pulse),
-        static_cast<unsigned>(activeTest.durationMs)
+        "CALIBRATION ACCEPTED CH%d",
+        activeTest.channel
     );
 
     return true;
 }
 
 // =====================================================
-// UI HELPERS
+// CALIBRATION UI HELPERS
 // =====================================================
 
 void refreshCalibrationLabels()
@@ -1028,15 +1116,15 @@ void refreshCalibrationLabels()
                 break;
 
             case 1:
-                message = "RUNNING - USE STOP IF NEEDED";
+                message = "RUNNING - USE STOP";
                 break;
 
             case 2:
-                message = "COMMAND COMPLETE - CHECK SERVO";
+                message = "COMPLETE - CHECK SERVO";
                 break;
 
             case 3:
-                message = "STOP REQUEST COMPLETED";
+                message = "STOPPED";
                 break;
 
             case 4:
@@ -1044,7 +1132,7 @@ void refreshCalibrationLabels()
                 break;
 
             default:
-                message = "UNKNOWN STATUS";
+                message = "UNKNOWN";
                 break;
         }
 
@@ -1095,7 +1183,6 @@ lv_obj_t* makeButton(
         lv_label_create(button);
 
     lv_label_set_text(text, label);
-
     lv_obj_center(text);
 
     lv_obj_add_event_cb(
@@ -1109,7 +1196,7 @@ lv_obj_t* makeButton(
 }
 
 // =====================================================
-// UI CALLBACKS
+// CALIBRATION BUTTON CALLBACKS
 // =====================================================
 
 void previousChannel(lv_event_t*)
@@ -1251,18 +1338,11 @@ void stopButtonClicked(lv_event_t*)
     if (cycleRunning.load())
     {
         stopRequested.store(true);
-
-        ESP_LOGW(
-            TAG,
-            "STOP REQUESTED"
-        );
+        ESP_LOGW(TAG, "STOP REQUESTED");
     }
     else
     {
-        ESP_LOGI(
-            TAG,
-            "STOP: no active servo"
-        );
+        ESP_LOGI(TAG, "No active servo");
     }
 
     refreshCalibrationLabels();
@@ -1272,17 +1352,11 @@ void saveButtonClicked(lv_event_t*)
 {
     if (saveProfiles())
     {
-        ESP_LOGI(
-            TAG,
-            "UI SAVE ALL: SUCCESS"
-        );
+        ESP_LOGI(TAG, "SAVE ALL SUCCESS");
     }
     else
     {
-        ESP_LOGE(
-            TAG,
-            "UI SAVE ALL: FAILED"
-        );
+        ESP_LOGE(TAG, "SAVE ALL FAILED");
     }
 
     refreshCalibrationLabels();
@@ -1320,7 +1394,7 @@ void closeButtonClicked(lv_event_t*)
 }
 
 // =====================================================
-// UI TIMER
+// CALIBRATION TIMER
 // =====================================================
 
 void calibrationTimerCallback(lv_timer_t*)
@@ -1336,7 +1410,8 @@ bool openCalibrationPanel()
 {
     if (
         !initialized ||
-        faultLatched.load()
+        faultLatched.load() ||
+        cycleRunning.load()
     )
     {
         return false;
@@ -1370,8 +1445,6 @@ bool openCalibrationPanel()
 
     lv_obj_move_foreground(calibrationPanel);
 
-    // Title.
-
     lv_obj_t* title =
         lv_label_create(calibrationPanel);
 
@@ -1402,24 +1475,18 @@ bool openCalibrationPanel()
     makeButton(
         calibrationPanel,
         "< CH",
-        30,
-        105,
-        145,
-        55,
+        30, 105, 145, 55,
         previousChannel
     );
 
     makeButton(
         calibrationPanel,
         "CH >",
-        235,
-        105,
-        145,
-        55,
+        235, 105, 145, 55,
         nextChannel
     );
 
-    // PWM.
+    // Pulse.
 
     pulseLabel =
         lv_label_create(calibrationPanel);
@@ -1434,20 +1501,14 @@ bool openCalibrationPanel()
     makeButton(
         calibrationPanel,
         "PWM -",
-        30,
-        220,
-        145,
-        55,
+        30, 220, 145, 55,
         decreasePulse
     );
 
     makeButton(
         calibrationPanel,
         "PWM +",
-        235,
-        220,
-        145,
-        55,
+        235, 220, 145, 55,
         increasePulse
     );
 
@@ -1466,46 +1527,34 @@ bool openCalibrationPanel()
     makeButton(
         calibrationPanel,
         "TIME -",
-        30,
-        335,
-        145,
-        55,
+        30, 335, 145, 55,
         decreaseDuration
     );
 
     makeButton(
         calibrationPanel,
         "TIME +",
-        235,
-        335,
-        145,
-        55,
+        235, 335, 145, 55,
         increaseDuration
     );
 
-    // RUN and STOP.
+    // RUN / STOP.
 
     makeButton(
         calibrationPanel,
         "RUN",
-        30,
-        415,
-        145,
-        55,
+        30, 415, 145, 55,
         runButtonClicked
     );
 
     makeButton(
         calibrationPanel,
         "STOP",
-        235,
-        415,
-        145,
-        55,
+        235, 415, 145, 55,
         stopButtonClicked
     );
 
-    // Runtime status.
+    // Status.
 
     statusLabel =
         lv_label_create(calibrationPanel);
@@ -1545,42 +1594,31 @@ bool openCalibrationPanel()
         515
     );
 
-    // Save and close.
+    // SAVE / CLOSE.
 
     makeButton(
         calibrationPanel,
         "SAVE ALL",
-        30,
-        545,
-        145,
-        45,
+        30, 545, 145, 45,
         saveButtonClicked
     );
 
     makeButton(
         calibrationPanel,
         "CLOSE",
-        235,
-        545,
-        145,
-        45,
+        235, 545, 145, 45,
         closeButtonClicked
     );
 
     refreshCalibrationLabels();
 
-    calibrationTimer =
-        lv_timer_create(
-            calibrationTimerCallback,
-            100,
-            nullptr
-        );
-
-    ESP_LOGI(
-        TAG,
-        "Calibration panel opened"
+    calibrationTimer = lv_timer_create(
+        calibrationTimerCallback,
+        100,
+        nullptr
     );
 
+    ESP_LOGI(TAG, "Calibration panel opened");
     return true;
 }
 
@@ -1597,19 +1635,245 @@ bool RealDispenser::initializeServo0Neutral()
 
 bool RealDispenser::testServo0Once()
 {
-    // Existing Home TEST SERVO button opens
-    // the calibration panel.
-
     return openCalibrationPanel();
 }
 
-bool RealDispenser::dispense(int slot)
+// =====================================================
+// ASYNC MOTOR BACKEND
+// =====================================================
+
+// Returns true when a command is ACCEPTED.
+// Does not mean a candy has been detected.
+
+bool RealDispenser::startDispense(int slot)
 {
-    ESP_LOGW(
-        TAG,
-        "DISPENSE DISABLED: slot=%d; calibration only",
-        slot
+    if (
+        slot < 1 ||
+        slot > SERVO_COUNT ||
+        !initialized ||
+        faultLatched.load()
+    )
+    {
+        ESP_LOGW(
+            TAG,
+            "START REJECTED slot=%d",
+            slot
+        );
+
+        return false;
+    }
+
+    if (calibrationPanel != nullptr)
+    {
+        ESP_LOGW(
+            TAG,
+            "Close calibration panel first"
+        );
+
+        return false;
+    }
+
+    const int channel = slot - 1;
+
+    const ServoProfile profile =
+        profiles[channel];
+
+    if (!validProfile(profile))
+    {
+        ESP_LOGE(
+            TAG,
+            "Invalid profile CH%d",
+            channel
+        );
+
+        return false;
+    }
+
+    // Allow only one active servo.
+
+    bool expected = false;
+
+    if (!cycleRunning.compare_exchange_strong(
+            expected,
+            true
+        ))
+    {
+        ESP_LOGW(TAG, "Motor is busy");
+        return false;
+    }
+
+    // Configure the sensor input.
+
+    gpio_config_t sensor = {};
+
+    sensor.pin_bit_mask =
+        (1ULL << SENSOR_GPIO);
+
+    sensor.mode = GPIO_MODE_INPUT;
+    sensor.pull_up_en = GPIO_PULLUP_ENABLE;
+    sensor.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    sensor.intr_type = GPIO_INTR_DISABLE;
+
+    if (gpio_config(&sensor) != ESP_OK)
+    {
+        latchFault("sensor GPIO initialization");
+        cycleRunning.store(false);
+        return false;
+    }
+
+    activeDispense = {
+        channel,
+        profile.pulse,
+        profile.durationMs
+    };
+
+    stopRequested.store(false);
+
+    lastDispenseSlot.store(slot);
+    dispenseStatus.store(DispenseStatus::Running);
+    cycleStatus.store(1);
+
+    const BaseType_t result = xTaskCreate(
+        dispenseTask,
+        "servo_dispense",
+        4096,
+        nullptr,
+        5,
+        nullptr
     );
 
-    return false;
+    if (result != pdPASS)
+    {
+        latchFault("dispense task creation");
+        cycleRunning.store(false);
+        return false;
+    }
+
+    ESP_LOGI(
+        TAG,
+        "START ACCEPTED slot=%d CH%d max=%u ms",
+        slot,
+        channel,
+        static_cast<unsigned>(profile.durationMs)
+    );
+
+    return true;
+}
+
+DispenseStatus RealDispenser::getDispenseStatus() const
+{
+    return dispenseStatus.load();
+}
+
+int RealDispenser::getLastDispenseSlot() const
+{
+    return lastDispenseSlot.load();
+}
+
+bool RealDispenser::isBusy() const
+{
+    return cycleRunning.load();
+}
+
+bool RealDispenser::requestStop()
+{
+    if (!cycleRunning.load())
+    {
+        return false;
+    }
+
+    stopRequested.store(true);
+
+    return true;
+}
+
+// =====================================================
+// GAME INTEGRATION
+// =====================================================
+
+// GameManager and SpecialEventManager expect:
+// true  = dispensing succeeded
+// false = dispensing failed.
+//
+// Therefore we wait for the motor task and return true
+// only after a sensor-confirmed cycle.
+//
+// This temporarily blocks the caller (LVGL callback).
+// It does not change the existing 5-second animation.
+
+bool RealDispenser::dispense(int slot)
+{
+    if (!startDispense(slot))
+    {
+        return false;
+    }
+
+    // Bound how long the caller waits.
+    // Motor task has its own per-slot deadline.
+
+    const int channel = slot - 1;
+
+    const int64_t deadlineUs =
+        esp_timer_get_time() +
+        static_cast<int64_t>(
+            profiles[channel].durationMs + 1000
+        ) * 1000;
+
+    while (
+        isBusy() &&
+        esp_timer_get_time() < deadlineUs
+    )
+    {
+        vTaskDelay(1);
+    }
+
+    // Worker did not complete by the extra deadline.
+
+    if (isBusy())
+    {
+        ESP_LOGE(
+            TAG,
+            "WORKER STALLED slot=%d; requesting STOP",
+            slot
+        );
+
+        requestStop();
+
+        const int64_t stopDeadlineUs =
+            esp_timer_get_time() + 250000;
+
+        while (
+            isBusy() &&
+            esp_timer_get_time() < stopDeadlineUs
+        )
+        {
+            vTaskDelay(1);
+        }
+
+        if (isBusy())
+        {
+            ESP_LOGE(
+                TAG,
+                "SERVO MAY STILL RUN: SWITCH POWER OFF"
+            );
+        }
+
+        return false;
+    }
+
+    const DispenseStatus result =
+        getDispenseStatus();
+
+    const bool confirmed =
+        result == DispenseStatus::CandyDetected;
+
+    ESP_LOGI(
+        TAG,
+        "GAME DISPENSE slot=%d detected=%d status=%d",
+        slot,
+        static_cast<int>(confirmed),
+        static_cast<int>(result)
+    );
+
+    return confirmed;
 }
