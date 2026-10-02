@@ -96,6 +96,7 @@ void SDCardQuizSource::buildIndex()
     //
     // Reserve capacity up front to avoid repeated
     // vector reallocations while indexing.
+
     offsets.reserve(
         20000
     );
@@ -114,6 +115,7 @@ void SDCardQuizSource::buildIndex()
 
 
     // Static buffer so it does not consume task stack.
+
     static unsigned char buffer[
         BUFFER_SIZE
     ];
@@ -188,6 +190,7 @@ void SDCardQuizSource::buildIndex()
             )
             {
                 // Ignore blank CR/LF lines.
+
                 if (
                     c == '\n'
                     ||
@@ -199,6 +202,7 @@ void SDCardQuizSource::buildIndex()
 
 
                 // First byte of a new JSONL record.
+
                 offsets.push_back(
                     currentOffset
                 );
@@ -717,15 +721,28 @@ extractStringArray(
     const std::string& key
 )
 {
-    std::string search =
+    // Find only the key first.
+    //
+    // This accepts both:
+    //
+    // "options":[...]
+    //
+    // and:
+    //
+    // "options": [...]
+    //
+    // instead of requiring an exact no-whitespace
+    // sequence.
+
+    std::string keyToken =
         "\""
         + key
-        + "\":[";
+        + "\"";
 
 
     std::size_t start =
         line.find(
-            search
+            keyToken
         );
 
 
@@ -743,7 +760,75 @@ extractStringArray(
 
 
     start +=
-        search.length();
+        keyToken.length();
+
+
+    // Skip whitespace after key.
+
+    while (
+        start < line.size()
+        &&
+        (
+            line[start] == ' '
+            ||
+            line[start] == '\t'
+        )
+    )
+    {
+        ++start;
+    }
+
+
+    // Expect colon.
+
+    if (
+        start >= line.size()
+        ||
+        line[start] != ':'
+    )
+    {
+        throw std::runtime_error(
+            "Missing ':' after array field: "
+            + key
+        );
+    }
+
+
+    ++start;
+
+
+    // Skip whitespace after colon.
+
+    while (
+        start < line.size()
+        &&
+        (
+            line[start] == ' '
+            ||
+            line[start] == '\t'
+        )
+    )
+    {
+        ++start;
+    }
+
+
+    // Expect opening bracket.
+
+    if (
+        start >= line.size()
+        ||
+        line[start] != '['
+    )
+    {
+        throw std::runtime_error(
+            "Expected '[' for array field: "
+            + key
+        );
+    }
+
+
+    ++start;
 
 
     std::vector<std::string>
@@ -758,6 +843,8 @@ extractStringArray(
         i < line.size()
     )
     {
+        // Array finished.
+
         if (
             line[i] == ']'
         )
@@ -766,10 +853,14 @@ extractStringArray(
         }
 
 
+        // Ignore separators / whitespace.
+
         if (
             line[i] == ','
             ||
             line[i] == ' '
+            ||
+            line[i] == '\t'
         )
         {
             ++i;
@@ -778,6 +869,8 @@ extractStringArray(
             continue;
         }
 
+
+        // Every array item must be a JSON string.
 
         if (
             line[i] != '"'

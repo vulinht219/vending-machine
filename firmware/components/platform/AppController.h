@@ -5,25 +5,35 @@
 #include "SDCardQuizSource.h"
 #include "NVSQuizProgressStore.h"
 #include "NVSGameProgressStore.h"
+#include "NVSSpecialEventProgressStore.h"
+
 #include "RealDispenser.h"
+#include "DS3231Clock.h"
 
 #include "game/GameManager.h"
+#include "event/SpecialEventManager.h"
 
 #include <memory>
 
 
-class AppController {
+class AppController
+{
 public:
+
     AppController();
+
 
     void start();
 
+
     AppState getState() const;
+
 
     GameManager* getGame();
 
 
 private:
+
     AppState state;
 
 
@@ -39,10 +49,22 @@ private:
         gameProgressStore;
 
 
+    NVSSpecialEventProgressStore
+        specialEventProgressStore;
+
+
     RealDispenser
         dispenser;
 
 
+    std::unique_ptr<DS3231Clock>
+        clock;
+
+
     std::unique_ptr<GameManager>
         game;
+
+
+    std::unique_ptr<SpecialEventManager>
+        specialEventManager;
 };
