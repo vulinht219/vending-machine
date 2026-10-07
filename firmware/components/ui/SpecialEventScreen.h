@@ -7,26 +7,41 @@
 #include "game/GameManager.h"
 
 
-class SpecialEventScreen {
+class SpecialEventScreen
+{
 public:
-
     static void create(
         SpecialEventManager& specialEventManager,
         GameManager& game,
         SpecialEventType eventType
     );
 
-
 private:
-
     static SpecialEventManager*
         currentSpecialEventManager;
 
     static GameManager*
         currentGame;
 
+    static SpecialEventType
+        currentEventType;
+
+
+    static void showGreeting();
+
+    static void showCandySelection();
+
+
+    static void greetingButtonEvent(
+        lv_event_t* event
+    );
 
     static void candyButtonEvent(
         lv_event_t* event
+    );
+
+
+    static const char* getGreetingText(
+        SpecialEventType eventType
     );
 };

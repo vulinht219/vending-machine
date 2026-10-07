@@ -7,6 +7,10 @@
 #include <string>
 
 
+// =========================================================
+// EXISTING CANDY ASSETS
+// =========================================================
+
 LV_FONT_DECLARE(jersey25_85);
 
 LV_IMAGE_DECLARE(candy_title);
@@ -14,9 +18,22 @@ LV_IMAGE_DECLARE(candy_panel);
 LV_IMAGE_DECLARE(candy_button);
 
 
-// =====================================================
+// =========================================================
+// COLORS
+// =========================================================
+
+namespace
+{
+
+constexpr uint32_t PINK_COLOR =
+    0xFF9FCF;
+
+}
+
+
+// =========================================================
 // STATIC DATA
-// =====================================================
+// =========================================================
 
 SpecialEventManager*
 SpecialEventScreen::currentSpecialEventManager =
@@ -28,16 +45,304 @@ SpecialEventScreen::currentGame =
     nullptr;
 
 
-// =====================================================
-// CANDY BUTTON EVENT
-// =====================================================
+SpecialEventType
+SpecialEventScreen::currentEventType =
+    SpecialEventType::NONE;
 
-void SpecialEventScreen::candyButtonEvent(
+
+// =========================================================
+// GREETING TEXT
+// =========================================================
+
+const char* SpecialEventScreen::getGreetingText(
+    SpecialEventType eventType
+)
+{
+    switch (
+        eventType
+    )
+    {
+        case SpecialEventType::MONTHIVERSARY:
+            return "Happy monthiversary!";
+
+
+        case SpecialEventType::HALLOWEEN:
+            return "Trick or treat!";
+
+
+        case SpecialEventType::CHRISTMAS:
+            return "Merry Christmas!";
+
+
+        case SpecialEventType::NEW_YEARS_EVE:
+            return "One last sweet this year?";
+
+
+        case SpecialEventType::NEW_YEAR:
+            return "Happy New Year!";
+
+
+        case SpecialEventType::VALENTINE:
+            return "Happy Valentine!";
+
+
+        case SpecialEventType::BIRTHDAY_SEPTEMBER:
+            return "Happy Birthday!";
+
+
+        case SpecialEventType::BIRTHDAY_OCTOBER:
+            return "Happy Birthday!";
+
+
+        case SpecialEventType::NONE:
+        default:
+            return "Special Day!";
+    }
+}
+
+
+// =========================================================
+// CREATE
+// =========================================================
+
+void SpecialEventScreen::create(
+    SpecialEventManager& specialEventManager,
+    GameManager& game,
+    SpecialEventType eventType
+)
+{
+    currentSpecialEventManager =
+        &specialEventManager;
+
+
+    currentGame =
+        &game;
+
+
+    currentEventType =
+        eventType;
+
+
+    showGreeting();
+}
+
+
+// =========================================================
+// GREETING SCREEN
+// =========================================================
+
+void SpecialEventScreen::showGreeting()
+{
+    // Stop old animation first.
+    SpecialDayBackground::stop();
+
+
+    lv_obj_t* screen =
+        lv_screen_active();
+
+
+    lv_obj_clean(
+        screen
+    );
+
+
+    // =====================================================
+    // SPECIAL-DAY PNG BACKGROUND
+    // =====================================================
+
+    SpecialDayBackground::create(
+        screen,
+        currentEventType
+    );
+
+
+    // =====================================================
+    // GREETING TITLE
+    // =====================================================
+
+    lv_obj_t* title =
+        lv_label_create(
+            screen
+        );
+
+
+    lv_label_set_text(
+        title,
+        getGreetingText(
+            currentEventType
+        )
+    );
+
+
+    lv_obj_set_width(
+        title,
+        420
+    );
+
+
+    lv_label_set_long_mode(
+        title,
+        LV_LABEL_LONG_WRAP
+    );
+
+
+    lv_obj_set_style_text_align(
+        title,
+        LV_TEXT_ALIGN_CENTER,
+        0
+    );
+
+
+    lv_obj_set_style_text_color(
+        title,
+        lv_color_hex(
+            PINK_COLOR
+        ),
+        0
+    );
+
+
+    // Uses LVGL default font.
+    // No additional image/font asset required.
+    lv_obj_align(
+        title,
+        LV_ALIGN_TOP_MID,
+        0,
+        105
+    );
+
+
+    lv_obj_remove_flag(
+        title,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    // =====================================================
+    // CONTINUE BUTTON
+    // =====================================================
+
+    lv_obj_t* continueButton =
+        lv_button_create(
+            screen
+        );
+
+
+    lv_obj_set_size(
+        continueButton,
+        260,
+        70
+    );
+
+
+    lv_obj_align(
+        continueButton,
+        LV_ALIGN_BOTTOM_MID,
+        0,
+        -80
+    );
+
+
+    // Transparent button.
+    lv_obj_set_style_bg_opa(
+        continueButton,
+        LV_OPA_TRANSP,
+        0
+    );
+
+
+    // Pink outline.
+    lv_obj_set_style_border_width(
+        continueButton,
+        2,
+        0
+    );
+
+
+    lv_obj_set_style_border_color(
+        continueButton,
+        lv_color_hex(
+            PINK_COLOR
+        ),
+        0
+    );
+
+
+    lv_obj_set_style_radius(
+        continueButton,
+        18,
+        0
+    );
+
+
+    lv_obj_set_style_shadow_width(
+        continueButton,
+        0,
+        0
+    );
+
+
+    // =====================================================
+    // BUTTON TEXT
+    // =====================================================
+
+    lv_obj_t* continueLabel =
+        lv_label_create(
+            continueButton
+        );
+
+
+    lv_label_set_text(
+        continueLabel,
+        "CHOOSE A CANDY"
+    );
+
+
+    lv_obj_set_style_text_color(
+        continueLabel,
+        lv_color_hex(
+            PINK_COLOR
+        ),
+        0
+    );
+
+
+    lv_obj_center(
+        continueLabel
+    );
+
+
+    lv_obj_remove_flag(
+        continueLabel,
+        LV_OBJ_FLAG_CLICKABLE
+    );
+
+
+    // =====================================================
+    // CLICK
+    // =====================================================
+
+    lv_obj_add_event_cb(
+        continueButton,
+        greetingButtonEvent,
+        LV_EVENT_CLICKED,
+        nullptr
+    );
+}
+
+
+// =========================================================
+// GREETING -> CANDY SELECT
+// =========================================================
+
+void SpecialEventScreen::greetingButtonEvent(
     lv_event_t* event
 )
 {
     if (
-        lv_event_get_code(event)
+        lv_event_get_code(
+            event
+        )
         != LV_EVENT_CLICKED
     ) {
         return;
@@ -55,74 +360,18 @@ void SpecialEventScreen::candyButtonEvent(
     }
 
 
-    void* userData =
-        lv_event_get_user_data(
-            event
-        );
-
-
-    int slot =
-        static_cast<int>(
-            reinterpret_cast<intptr_t>(
-                userData
-            )
-        );
-
-
-    // =================================================
-    // CLAIM SPECIAL EVENT REWARD
-    // =================================================
-
-    bool success =
-        currentSpecialEventManager
-            ->selectCandy(
-                slot
-            );
-
-
-    if (
-        !success
-    ) {
-        return;
-    }
-
-
-    // =================================================
-    // STOP SPECIAL-DAY BACKGROUND ANIMATION
-    // =================================================
-
-    SpecialDayBackground::stop();
-
-
-    // =================================================
-    // DISPENSING SCREEN
-    // =================================================
-
-    DispensingScreen::create(
-        *currentGame
-    );
+    showCandySelection();
 }
 
 
-// =====================================================
-// CREATE
-// =====================================================
+// =========================================================
+// CANDY SELECTION
+// =========================================================
 
-void SpecialEventScreen::create(
-    SpecialEventManager& specialEventManager,
-    GameManager& game,
-    SpecialEventType eventType
-)
+void SpecialEventScreen::showCandySelection()
 {
-    currentSpecialEventManager =
-        &specialEventManager;
-
-
-    currentGame =
-        &game;
-
-
-    // Stop previous greeting animation first.
+    // The current background object is about to be deleted,
+    // therefore stop its timer first.
     SpecialDayBackground::stop();
 
 
@@ -135,37 +384,19 @@ void SpecialEventScreen::create(
     );
 
 
-    // =================================================
-    // SPECIAL-DAY BACKGROUND
-    // =================================================
-    //
-    // Same background as the greeting screen.
-    //
-    // Examples:
-    //
-    // Christmas      -> xmas
-    // Halloween      -> halloween
-    // Monthiversary  -> monthi
-    // New Year       -> newyear
-    // New Year's Eve -> anewyear
-    // Valentine      -> val
-    // 21/09          -> mb
-    // 02/10          -> ab
-    //
-    // =================================================
+    // =====================================================
+    // SAME SPECIAL-DAY BACKGROUND
+    // =====================================================
 
     SpecialDayBackground::create(
         screen,
-        eventType
+        currentEventType
     );
 
 
-    // =================================================
-    // TITLE
-    // Same asset as normal CandySelectScreen
-    //
-    // 394 x 60
-    // =================================================
+    // =====================================================
+    // CANDY TITLE
+    // =====================================================
 
     lv_obj_t* title =
         lv_image_create(
@@ -193,12 +424,9 @@ void SpecialEventScreen::create(
     );
 
 
-    // =================================================
-    // PANEL
-    // Same asset as normal CandySelectScreen
-    //
-    // 445 x 475
-    // =================================================
+    // =====================================================
+    // CANDY PANEL
+    // =====================================================
 
     lv_obj_t* panel =
         lv_image_create(
@@ -226,9 +454,9 @@ void SpecialEventScreen::create(
     );
 
 
-    // =================================================
-    // INVISIBLE BUTTON LAYER
-    // =================================================
+    // =====================================================
+    // BUTTON LAYER
+    // =====================================================
 
     lv_obj_t* buttonLayer =
         lv_obj_create(
@@ -292,19 +520,9 @@ void SpecialEventScreen::create(
     );
 
 
-    // =================================================
-    // BUTTON POSITIONS
-    //
-    // Exactly the same as normal CandySelectScreen.
-    //
-    // Panel: 445 x 475
-    // Button: 125 x 171
-    //
-    //      1    2    3
-    //
-    //      4    5    6
-    //
-    // =================================================
+    // =====================================================
+    // POSITIONS
+    // =====================================================
 
     const int xPositions[3] = {
         15,
@@ -319,31 +537,27 @@ void SpecialEventScreen::create(
     };
 
 
-    // =================================================
-    // CREATE 6 CANDY BUTTONS
-    // =================================================
+    // =====================================================
+    // 6 CANDY BUTTONS
+    // =====================================================
 
     for (
         int i = 0;
         i < 6;
         ++i
-    ) {
-
-        int candyNumber =
+    )
+    {
+        const int candyNumber =
             i + 1;
 
 
-        int column =
+        const int column =
             i % 3;
 
 
-        int row =
+        const int row =
             i / 3;
 
-
-        // =============================================
-        // BUTTON
-        // =============================================
 
         lv_obj_t* button =
             lv_button_create(
@@ -400,9 +614,9 @@ void SpecialEventScreen::create(
         );
 
 
-        // =============================================
-        // CANDY BUTTON IMAGE
-        // =============================================
+        // =================================================
+        // EXISTING CANDY BUTTON IMAGE
+        // =================================================
 
         lv_obj_t* buttonImage =
             lv_image_create(
@@ -427,9 +641,9 @@ void SpecialEventScreen::create(
         );
 
 
-        // =============================================
-        // NUMBER
-        // =============================================
+        // =================================================
+        // CANDY NUMBER
+        // =================================================
 
         lv_obj_t* label =
             lv_label_create(
@@ -437,7 +651,7 @@ void SpecialEventScreen::create(
             );
 
 
-        std::string text =
+        const std::string text =
             std::to_string(
                 candyNumber
             );
@@ -476,14 +690,15 @@ void SpecialEventScreen::create(
         );
 
 
-        // =============================================
+        // =================================================
         // CLICK EVENT
-        // =============================================
+        // =================================================
 
         lv_obj_add_event_cb(
             button,
             candyButtonEvent,
             LV_EVENT_CLICKED,
+
             reinterpret_cast<void*>(
                 static_cast<intptr_t>(
                     candyNumber
@@ -491,4 +706,66 @@ void SpecialEventScreen::create(
             )
         );
     }
+}
+
+
+// =========================================================
+// CANDY BUTTON CLICK
+// =========================================================
+
+void SpecialEventScreen::candyButtonEvent(
+    lv_event_t* event
+)
+{
+    if (
+        lv_event_get_code(
+            event
+        )
+        != LV_EVENT_CLICKED
+    ) {
+        return;
+    }
+
+
+    if (
+        currentSpecialEventManager
+        == nullptr
+        ||
+        currentGame
+        == nullptr
+    ) {
+        return;
+    }
+
+
+    const int slot =
+        static_cast<int>(
+            reinterpret_cast<intptr_t>(
+                lv_event_get_user_data(
+                    event
+                )
+            )
+        );
+
+
+    const bool success =
+        currentSpecialEventManager
+            ->selectCandy(
+                slot
+            );
+
+
+    if (
+        !success
+    ) {
+        return;
+    }
+
+
+    SpecialDayBackground::stop();
+
+
+    DispensingScreen::create(
+        *currentGame
+    );
 }
