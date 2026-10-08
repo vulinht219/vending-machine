@@ -18,7 +18,7 @@
 #include "LVGLManager.h"
 
 #include "HomeScreen.h"
-#include "SpecialEventScreen.h"
+#include "screens/SpecialEventIntroScreen.h"
 
 #include "lvgl.h"
 
@@ -1852,7 +1852,7 @@ void AppController::start()
     //       ↓
     // SpecialEventManager
     //       ↓
-    // SpecialEventScreen
+    // SpecialEventIntroScreen
     //
     // Normal day:
     //      HomeScreen
@@ -1879,7 +1879,7 @@ void AppController::start()
         );
 
 
-        SpecialEventScreen::create(
+        SpecialEventIntroScreen::create(
             *specialEventManager,
             *game,
             eventType

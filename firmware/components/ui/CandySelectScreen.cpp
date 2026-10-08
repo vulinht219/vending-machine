@@ -2,7 +2,18 @@
 
 #include "DispensingScreen.h"
 
+#include "esp_log.h"
+
+extern "C" {
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+}
+
+#include <atomic>
+#include <cstdint>
+#include <new>
 #include <string>
+
 
 LV_FONT_DECLARE(jersey25_85);
 
@@ -22,18 +33,30 @@ CandySelectScreen::currentGame =
 
 namespace {
 
+constexpr const char* TAG =
+    "CandySelectScreen";
+
 lv_timer_t* backgroundTimer =
     nullptr;
-
 
 int currentBackgroundFrame =
     0;
 
+std::atomic<bool> dispenseTaskRunning{
+    false
+};
 
 const lv_image_dsc_t* backgroundFrames[] = {
     &correct_1,
     &correct_2,
     &correct_3
+};
+
+
+struct DispenseTaskContext
+{
+    GameManager* game;
+    int candyIndex;
 };
 
 
@@ -63,13 +86,11 @@ void updateBackground(
             )
         );
 
-
     if (
         background == nullptr
     ) {
         return;
     }
-
 
     currentBackgroundFrame =
         (
@@ -77,12 +98,52 @@ void updateBackground(
         )
         % 3;
 
-
     lv_image_set_src(
         background,
         backgroundFrames[
             currentBackgroundFrame
         ]
+    );
+}
+
+
+void dispenseTask(
+    void* parameter
+)
+{
+    auto* context =
+        static_cast<DispenseTaskContext*>(
+            parameter
+        );
+
+    bool success =
+        false;
+
+    if (
+        context != nullptr
+        && context->game != nullptr
+    ) {
+        success =
+            context->game->selectCandy(
+                context->candyIndex
+            );
+
+        ESP_LOGI(
+            TAG,
+            "Dispense finished: slot=%d success=%d",
+            context->candyIndex,
+            static_cast<int>(success)
+        );
+    }
+
+    delete context;
+
+    dispenseTaskRunning.store(
+        false
+    );
+
+    vTaskDelete(
+        nullptr
     );
 }
 
@@ -98,47 +159,88 @@ void candyButtonEvent(
         return;
     }
 
+    if (
+        dispenseTaskRunning.exchange(true)
+    ) {
+        return;
+    }
 
-    void* userData =
-        lv_event_get_user_data(
-            event
-        );
-
-
-    int candyIndex =
+    const int candyIndex =
         static_cast<int>(
             reinterpret_cast<intptr_t>(
-                userData
+                lv_event_get_user_data(
+                    event
+                )
             )
         );
-
 
     if (
         CandySelectScreen::currentGame
         == nullptr
     ) {
+        dispenseTaskRunning.store(false);
         return;
     }
 
-
-    stopBackgroundAnimation();
-
-
-    // IMPORTANT:
-    // If your existing GameManager uses a different
-    // method name, replace this one line only.
-    CandySelectScreen::currentGame
-        ->selectCandy(
+    auto* context =
+        new (std::nothrow) DispenseTaskContext{
+            CandySelectScreen::currentGame,
             candyIndex
+        };
+
+    if (
+        context == nullptr
+    ) {
+        dispenseTaskRunning.store(false);
+        ESP_LOGE(
+            TAG,
+            "Unable to allocate dispense task context"
+        );
+        return;
+    }
+
+    const BaseType_t taskResult =
+        xTaskCreate(
+            dispenseTask,
+            "candy_dispense",
+            4096,
+            context,
+            4,
+            nullptr
         );
 
+    if (
+        taskResult != pdPASS
+    ) {
+        delete context;
+
+        dispenseTaskRunning.store(
+            false
+        );
+
+        ESP_LOGE(
+            TAG,
+            "Unable to create dispense task"
+        );
+
+        return;
+    }
+
+    // Do not wait for servo/sensor completion
+    // inside the LVGL event callback.
+    //
+    // DispensingScreen appears immediately,
+    // while the physical dispense operation
+    // continues in the worker task.
+
+    stopBackgroundAnimation();
 
     DispensingScreen::create(
         *CandySelectScreen::currentGame
     );
 }
 
-}
+} // namespace
 
 
 // =====================================================
@@ -356,7 +458,6 @@ void CandySelectScreen::create(
 
     // =================================================
     // TITLE
-    // 394 x 60
     // =================================================
 
     lv_obj_t* title =
@@ -387,7 +488,6 @@ void CandySelectScreen::create(
 
     // =================================================
     // PANEL
-    // 445 x 475
     // =================================================
 
     lv_obj_t* panel =
@@ -418,9 +518,6 @@ void CandySelectScreen::create(
 
     // =================================================
     // INVISIBLE BUTTON LAYER
-    //
-    // We create a transparent container exactly over
-    // the panel so all positions are relative to it.
     // =================================================
 
     lv_obj_t* buttonLayer =
@@ -474,15 +571,6 @@ void CandySelectScreen::create(
 
     // =================================================
     // BUTTON POSITIONS
-    //
-    // Panel: 445 x 475
-    // Button: 125 x 171
-    //
-    // Row 1:
-    // 1 2 3
-    //
-    // Row 2:
-    // 4 5 6
     // =================================================
 
     const int x1 = 15;

@@ -10,34 +10,20 @@
 class SpecialEventIntroScreen
 {
 public:
-
     static void create(
         SpecialEventManager& specialEventManager,
         GameManager& game,
         SpecialEventType eventType
     );
 
-
 private:
-
     static SpecialEventManager* currentSpecialEventManager;
-
     static GameManager* currentGame;
-
     static SpecialEventType currentEventType;
+    static lv_timer_t* autoAdvanceTimer;
 
-
-    static void continueButtonEvent(
-        lv_event_t* event
-    );
-
-
-    static const char* getTitle(
-        SpecialEventType eventType
-    );
-
-
-    static const char* getButtonText(
-        SpecialEventType eventType
-    );
+    static void continueButtonEvent(lv_event_t* event);
+    static void autoAdvanceEvent(lv_timer_t* timer);
+    static void transitionToCandySelection();
+    static void stopAutoAdvanceTimer();
 };
