@@ -54,6 +54,10 @@ SpecialEventIntroScreen::autoAdvanceTimer =
     nullptr;
 
 
+// =====================================================
+// HELPERS
+// =====================================================
+
 namespace
 {
 
@@ -150,6 +154,9 @@ int getTitleHeight(
 
 // =====================================================
 // TIMER CLEANUP
+//
+// Kept for compatibility with the current header.
+// No automatic timer is created anymore.
 // =====================================================
 
 void SpecialEventIntroScreen::stopAutoAdvanceTimer()
@@ -191,7 +198,10 @@ void SpecialEventIntroScreen::transitionToCandySelection()
 
 
 // =====================================================
-// CLICK TO SKIP THE 5 SECOND INTRO
+// BUTTON CLICK
+//
+// The intro screen ONLY changes when the user
+// explicitly presses the special-day button.
 // =====================================================
 
 void SpecialEventIntroScreen::continueButtonEvent(
@@ -206,24 +216,26 @@ void SpecialEventIntroScreen::continueButtonEvent(
     }
 
     stopAutoAdvanceTimer();
+
     transitionToCandySelection();
 }
 
 
 // =====================================================
-// AUTOMATIC TRANSITION AFTER 5 SECONDS
+// LEGACY AUTO-ADVANCE CALLBACK
+//
+// Kept only so the current .h file stays compatible.
+// It is never scheduled anymore.
 // =====================================================
 
 void SpecialEventIntroScreen::autoAdvanceEvent(
     lv_timer_t*
 )
 {
-    // Timer runs only once.
-    // Clear pointer before changing screen.
-    autoAdvanceTimer =
-        nullptr;
-
-    transitionToCandySelection();
+    // Intentionally empty.
+    //
+    // Special-event intro screens no longer
+    // advance automatically.
 }
 
 
@@ -246,7 +258,9 @@ void SpecialEventIntroScreen::create(
     currentEventType =
         eventType;
 
+    // Defensive cleanup in case an old timer exists.
     stopAutoAdvanceTimer();
+
     SpecialDayBackground::stop();
 
     lv_obj_t* screen =
@@ -258,7 +272,10 @@ void SpecialEventIntroScreen::create(
 
 
     // =================================================
-    // SPECIAL-DAY BACKGROUND ANIMATION
+    // SPECIAL-DAY BACKGROUND
+    //
+    // Animated special days keep looping here until
+    // the user presses the button.
     // =================================================
 
     SpecialDayBackground::create(
@@ -341,6 +358,8 @@ void SpecialEventIntroScreen::create(
             -70
         );
 
+        // Make the LVGL button itself invisible.
+        // Only the custom event-specific image is visible.
         lv_obj_set_style_bg_opa(
             button,
             LV_OPA_TRANSP,
@@ -371,6 +390,11 @@ void SpecialEventIntroScreen::create(
             0
         );
 
+
+        // =============================================
+        // CUSTOM BUTTON IMAGE
+        // =============================================
+
         lv_obj_t* buttonImage =
             lv_image_create(
                 button
@@ -385,10 +409,18 @@ void SpecialEventIntroScreen::create(
             buttonImage
         );
 
+        // Important:
+        // the image itself must not consume the click.
+        // The parent button receives the click instead.
         lv_obj_remove_flag(
             buttonImage,
             LV_OBJ_FLAG_CLICKABLE
         );
+
+
+        // =============================================
+        // USER CLICK -> CANDY SELECTION
+        // =============================================
 
         lv_obj_add_event_cb(
             button,
@@ -400,18 +432,26 @@ void SpecialEventIntroScreen::create(
 
 
     // =================================================
-    // AFTER 5 SECONDS -> SPECIAL CANDY SELECTION
+    // NO AUTOMATIC TRANSITION
     // =================================================
-
-    autoAdvanceTimer =
-        lv_timer_create(
-            autoAdvanceEvent,
-            5000,
-            nullptr
-        );
-
-    lv_timer_set_repeat_count(
-        autoAdvanceTimer,
-        1
-    );
+    //
+    // Previously:
+    //
+    // autoAdvanceTimer =
+    //     lv_timer_create(
+    //         autoAdvanceEvent,
+    //         5000,
+    //         nullptr
+    //     );
+    //
+    // lv_timer_set_repeat_count(
+    //     autoAdvanceTimer,
+    //     1
+    // );
+    //
+    // This has intentionally been removed.
+    //
+    // The user can stay on this screen indefinitely.
+    // Only pressing the special-event button advances
+    // to SpecialEventScreen.
 }
